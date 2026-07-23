@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <!--
   統合シェル（タブの器）。ここは原則いじらない。
-  ・🌅朝ルーティン = mizu-uki.github.io/morning-routine/ をそのまま埋め込み（あちらを更新すれば自動反映）
-  ・📅今日の予定   = today.html を埋め込み（毎日ここだけ差し替える）
+  1日の流れ順に3タブへフラット化：
+    🌅明朝5–8  = morning-routine の内部タブ "morning"
+    📅今日の予定 = today.html（毎日ここだけ差し替える）
+    🌙前夜の準備 = morning-routine の内部タブ "night"
+  morning-routine は同一オリジンなので、iframe内のタブを直接クリックし、
+  内部のタブバーは隠してタブの二重表示をなくしている。
+  （もし向こうのDOM構造が変わっても、隠せないだけで壊れないようにしてある）
 -->
 <html lang="ja">
 <head>
@@ -21,7 +26,7 @@
 <style>
   :root{
     --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7eaf0; --sub:#8b93a3;
-    --accent:#4f8cff; --morning:#e0a63c;
+    --accent:#4f8cff; --morning:#e0a63c; --night:#7b6cf6;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#f5f6f8; --card:#ffffff; --line:#e6e8ec; --text:#1b1f27; --sub:#6b7280; }
@@ -31,14 +36,16 @@
   body{margin:0;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
     display:flex;flex-direction:column;overflow:hidden}
-  .tabs{display:flex;gap:6px;padding:8px 10px;background:var(--bg);
+  .tabs{display:flex;gap:5px;padding:8px;background:var(--bg);
     border-bottom:1px solid var(--line);padding-top:calc(8px + env(safe-area-inset-top));flex:0 0 auto}
-  .tab{flex:1;text-align:center;padding:9px 6px;border:1px solid var(--line);border-radius:9px;
-    background:var(--card);color:var(--sub);font-size:13px;font-weight:700;cursor:pointer;user-select:none;
+  .tab{flex:1 1 0;min-width:0;text-align:center;padding:9px 2px;border:1px solid var(--line);
+    border-radius:9px;background:var(--card);color:var(--sub);font-size:12px;font-weight:700;
+    cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     transition:background .15s,color .15s,border-color .15s}
   .tab.on{color:#fff;border-color:transparent}
   #tabM.on{background:var(--morning)}
   #tabS.on{background:var(--accent)}
+  #tabN.on{background:var(--night)}
   .panes{flex:1 1 auto;position:relative;min-height:0}
   iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
   iframe.on{display:block}
@@ -46,8 +53,9 @@
 </head>
 <body>
 <div class="tabs">
-  <div class="tab" id="tabM">🌅 朝ルーティン</div>
+  <div class="tab" id="tabM">🌅 明朝5–8</div>
   <div class="tab" id="tabS">📅 今日の予定</div>
+  <div class="tab" id="tabN">🌙 前夜の準備</div>
 </div>
 <div class="panes">
   <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
@@ -55,33 +63,67 @@
 </div>
 
 <script>
-  var tabM = document.getElementById('tabM'), tabS = document.getElementById('tabS');
   var fM = document.getElementById('fM'), fS = document.getElementById('fS');
+  var BTN = { m: document.getElementById('tabM'),
+              s: document.getElementById('tabS'),
+              n: document.getElementById('tabN') };
+  var INNER = { m: 'morning', n: 'night' };   // morning-routine 側の data-t
   var KEY = 'shell-tab';
+  var wanted = null;   // 朝アプリで表示したい内部タブ
+
+  // iframe内(同一オリジン)のタブを操作し、内部タブバーを隠す
+  function applyInner(name){
+    try{
+      var doc = fM.contentDocument;
+      if(!doc || !doc.body) return false;
+      if(!doc.getElementById('shell-hide-tabs')){
+        var st = doc.createElement('style');
+        st.id = 'shell-hide-tabs';
+        st.textContent = '.tabs{display:none !important}';
+        (doc.head || doc.documentElement).appendChild(st);
+      }
+      var t = doc.querySelector('.tab[data-t="' + name + '"]');
+      if(!t) return false;
+      t.click();
+      return true;
+    }catch(e){ return false; }   // 構造変更や取得失敗時は何もしない（二重タブに戻るだけ）
+  }
+  fM.addEventListener('load', function(){ if(wanted) applyInner(wanted); });
 
   function today(){
     var d = new Date();
     return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
   }
+
   function show(which, remember){
-    var m = which === 'm';
-    tabM.classList.toggle('on', m);  tabS.classList.toggle('on', !m);
-    fM.classList.toggle('on', m);    fS.classList.toggle('on', !m);
+    for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
+    var useMorning = (which !== 's');
+    fM.classList.toggle('on', useMorning);
+    fS.classList.toggle('on', !useMorning);
+    if(useMorning){
+      wanted = INNER[which];
+      applyInner(wanted);          // 読み込み済みなら即反映。未了ならload時に反映
+    }
     if(remember){
       try{ localStorage.setItem(KEY, JSON.stringify({d: today(), t: which})); }catch(e){}
     }
   }
-  tabM.addEventListener('click', function(){ show('m', true); });
-  tabS.addEventListener('click', function(){ show('s', true); });
+  BTN.m.addEventListener('click', function(){ show('m', true); });
+  BTN.s.addEventListener('click', function(){ show('s', true); });
+  BTN.n.addEventListener('click', function(){ show('n', true); });
 
-  // 初期表示: 同じ日に手動で選んだタブがあればそれを、なければ時刻で判断（9時前は朝ルーティン）
+  // 初期表示: 同じ日に手動で選んだタブがあればそれを、なければ時刻で判断
+  //   4:00–11:59 → 明朝 / 12:00–19:59 → 今日の予定 / 20:00–3:59 → 前夜の準備
   (function(){
     var pick = null;
     try{
       var s = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if(s && s.d === today()) pick = s.t;
+      if(s && s.d === today() && BTN[s.t]) pick = s.t;
     }catch(e){}
-    if(!pick) pick = (new Date().getHours() < 9) ? 'm' : 's';
+    if(!pick){
+      var h = new Date().getHours();
+      pick = (h >= 4 && h < 12) ? 'm' : (h >= 20 || h < 4) ? 'n' : 's';
+    }
     show(pick, false);
   })();
 
