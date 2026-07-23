@@ -12,9 +12,7 @@
     --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7eaf0; --sub:#8b93a3;
     --accent:#4f8cff; --done:#59d98a; --fixed:#c9a227; --danger:#ff5d5d;
   }
-  @media (prefers-color-scheme: light){
-    :root{ --bg:#f5f6f8; --card:#ffffff; --line:#e6e8ec; --text:#1b1f27; --sub:#6b7280; }
-  }
+  /* 朝ルーティンと統一して常時ダーク（ライトモードには追従しない） */
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{margin:0 auto;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
