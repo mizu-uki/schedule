@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>7/23(木) スケジュール</title>
+<title>7/24(金) スケジュール</title>
 <style>
   :root{
     --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7eaf0; --sub:#8b93a3;
@@ -50,36 +50,38 @@
 <body>
 <header>
   <div class="top">
-    <span class="date">2026年7月23日（木）</span>
+    <span class="date">2026年7月24日（金）</span>
     <span class="count" id="count">0 / 0</span>
   </div>
   <div class="bar"><div class="fill" id="fill"></div></div>
 </header>
 
 <ul id="list">
+  <li data-k="p"><div class="box"></div><div class="body"><div class="time">05:00–06:00<span class="tag p">個人</span></div><div class="task">起床・朝ルーティン（morning-routineアプリ｜身支度・段取り）</div></div></li>
+  <li data-k="p"><div class="box"></div><div class="body"><div class="time">06:00–08:00 📖<span class="tag p">個人</span></div><div class="task">資格勉強120分（簿記2級）※夜がアポのため早朝の集中枠に確保</div></div></li>
+  <li data-k="p"><div class="box"></div><div class="body"><div class="time">08:00–08:20 🍚<span class="tag p">個人</span></div><div class="task">朝食</div></div></li>
+  <li data-k="p"><div class="box"></div><div class="body"><div class="time">08:20–08:40<span class="tag p">個人</span></div><div class="task">読書3ページ＋リベシティ宿題＋回遊</div></div></li>
+  <li data-k="p"><div class="box"></div><div class="body"><div class="time">08:40–09:00 🐦<span class="tag p">個人</span></div><div class="task">X運用（毎日）＋予備</div></div></li>
+  <li data-k="k"><div class="box"></div><div class="body"><div class="time">09:00–09:15<span class="tag k">業務</span></div><div class="task">G始業：課題整理→しこりタスク1つ以上着手</div></div></li>
+  <li data-k="k"><div class="box"></div><div class="body"><div class="time">09:15–11:00<span class="tag k">業務</span></div><div class="task">【G】倉庫対応＋個別案件（返金連絡・遅延連絡・佐川0717検品）</div></div></li>
   <li data-k="f"><div class="box"></div><div class="body"><div class="time">11:00–11:10 🔴<span class="tag f">固定/締切</span></div><div class="task">緊急案件を確認（倉庫取り下げ）</div></div></li>
-  <li data-k="k"><div class="box"></div><div class="body"><div class="time">11:10–12:00<span class="tag k">業務</span></div><div class="task">【G】倉庫対応（未出荷・追加ヤマト／追跡番号共有／入庫便→D列に日付入力）</div></div></li>
+  <li data-k="k"><div class="box"></div><div class="body"><div class="time">11:10–12:00<span class="tag k">業務</span></div><div class="task">倉庫対応・個別案件つづき／予備</div></div></li>
   <li data-k="f"><div class="box"></div><div class="body"><div class="time">12:00–12:30 🍴<span class="tag f">固定</span></div><div class="task">ランチ</div></div></li>
   <li data-k="k"><div class="box"></div><div class="body"><div class="time">12:30–13:30<span class="tag k">業務</span></div><div class="task">ブログ記事執筆＋BGM動画作成（1時間で完了）</div></div></li>
   <li data-k="k"><div class="box"></div><div class="body"><div class="time">13:30–14:00<span class="tag k">業務</span></div><div class="task">【G】出荷処理（Yahooネコポス変更点に注意）</div></div></li>
-  <li data-k="k"><div class="box"></div><div class="body"><div class="time">14:00–14:30<span class="tag k">業務</span></div><div class="task">【G】低評価レビュー返金処理→ネガティブレビューシート記載</div></div></li>
-  <li data-k="k"><div class="box"></div><div class="body"><div class="time">14:30–16:30<span class="tag k">業務</span></div><div class="task">予備／デスクワーク（残務・調整・前倒し）</div></div></li>
-  <li data-k="k"><div class="box"></div><div class="body"><div class="time">16:30–17:00<span class="tag k">業務</span></div><div class="task">【G】退勤〆作業（完了漏れ・Trello記録・clockify→スプシ・当日不良報告）</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">17:00–18:15 🏋️<span class="tag p">個人</span></div><div class="task">ジム（75分）</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">18:15–18:30 🚿<span class="tag p">個人</span></div><div class="task">シャワー</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">18:30–19:00 🍚<span class="tag p">個人</span></div><div class="task">夕飯</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">19:00–19:15 🐦<span class="tag p">個人</span></div><div class="task">X運用（毎日）</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">19:15–21:15 📖<span class="tag p">個人</span></div><div class="task">資格勉強120分（簿記2級）</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">21:15–21:35<span class="tag p">個人</span></div><div class="task">looks（鼻毛・眉毛・爪）＆唇ケア ※木曜</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">21:35–21:50<span class="tag p">個人</span></div><div class="task">リベシティ宿題＋回遊／読書3ページ</div></div></li>
-  <li data-k="p"><div class="box"></div><div class="body"><div class="time">21:50–22:00<span class="tag p">個人</span></div><div class="task">就寝準備（NG：ベッドでスマホ・コンビニ）</div></div></li>
+  <li data-k="k"><div class="box"></div><div class="body"><div class="time">14:00–14:30<span class="tag k">業務</span></div><div class="task">【G】低評価レビュー返金処理（金曜=変更レビュー確認含む）</div></div></li>
+  <li data-k="k"><div class="box"></div><div class="body"><div class="time">14:30–15:00<span class="tag k">業務</span></div><div class="task">【G】関税・インボイス処理（シナジークロス）</div></div></li>
+  <li data-k="p"><div class="box"></div><div class="body"><div class="time">15:00–15:30<span class="tag p">個人</span></div><div class="task">断捨離・手放す（毎週金曜）</div></div></li>
+  <li data-k="k"><div class="box"></div><div class="body"><div class="time">15:30–16:00<span class="tag k">業務</span></div><div class="task">【G】退勤〆作業（完了漏れ・Trello記録・clockify→スプシ・当日不良報告）</div></div></li>
+  <li data-k="f"><div class="box"></div><div class="body"><div class="time">16:00–18:00 🚿🚗<span class="tag f">固定</span></div><div class="task">ゆいかアポ 準備（シャワー・身支度）＋移動</div></div></li>
+  <li data-k="f"><div class="box"></div><div class="body"><div class="time">18:00–22:00<span class="tag f">固定</span></div><div class="task">ゆいか アポ（夕飯含む想定）</div></div></li>
   <li data-k="f"><div class="box"></div><div class="body"><div class="time">22:00 😴<span class="tag f">固定</span></div><div class="task">就寝 → 翌5:00起床（睡眠7時間）</div></div></li>
 </ul>
 
 <button class="reset" id="reset">チェックをリセット</button>
 
 <script>
-  var KEY = "sched-2026-07-23";
+  var KEY = "sched-2026-07-24";
   var items = Array.prototype.slice.call(document.querySelectorAll("#list li"));
   var fill = document.getElementById("fill");
   var count = document.getElementById("count");
