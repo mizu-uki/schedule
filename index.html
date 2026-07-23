@@ -63,7 +63,8 @@
 </div>
 <div class="panes">
   <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
-  <iframe id="fS" title="今日の予定" src="today.html"></iframe>
+  <!-- src は日付付きでJSから設定（日をまたいだら必ず最新の today.html を取りに行くため） -->
+  <iframe id="fS" title="今日の予定"></iframe>
 </div>
 
 <script>
@@ -98,6 +99,10 @@
     var d = new Date();
     return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
   }
+
+  // 日付をクエリに付けて読み込む＝日が変われば必ず新しい today.html を取得する
+  // （同じ日の中では通常どおりキャッシュが効く）
+  fS.src = 'today.html?d=' + today();
 
   function show(which, remember){
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
