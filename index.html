@@ -80,6 +80,9 @@
   //   m2a = 簿記2級（→ 予定タブの「資格勉強120分」）
   //   m4a = ブログ執筆（→ 予定タブの「ブログ記事執筆」）
   var DUP = ['m2a', 'm4a'];
+  // チェックボックスを持たない装飾ブロックはテキストで特定して隠す
+  //   （文言が変わった場合は隠れないだけで、表示は壊れない）
+  var DUP_TEXT = ['EC業務スタンバイ'];
 
   // iframe内(同一オリジン)のタブを操作し、内部タブバーと重複ブロックを隠す
   function applyInner(name){
@@ -97,6 +100,12 @@
         if(!input) return;                       // 見つからなければ何もしない
         var blk = input.closest('.block');
         if(blk) blk.style.display = 'none';
+      });
+      Array.prototype.forEach.call(doc.querySelectorAll('#morning .block'), function(blk){
+        var txt = blk.textContent || '';
+        for(var i = 0; i < DUP_TEXT.length; i++){
+          if(txt.indexOf(DUP_TEXT[i]) !== -1){ blk.style.display = 'none'; return; }
+        }
       });
       var t = doc.querySelector('.tab[data-t="' + name + '"]');
       if(!t) return false;
