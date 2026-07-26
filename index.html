@@ -120,9 +120,11 @@
     return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
   }
 
-  // 日付をクエリに付けて読み込む＝日が変われば必ず新しい today.html を取得する
-  // （同じ日の中では通常どおりキャッシュが効く）
-  fS.src = 'today.html?d=' + today();
+  // 毎回ユニークなクエリを付けて読み込む。
+  // GitHub Pages は max-age=600 を返すため、日付だけのクエリだと
+  // 「同じ日に予定を更新しても最大10分間 古い内容が出る」ことになる。
+  // 予定は1日に何度も直すので、開くたびに必ず最新を取りに行く方を優先する。
+  fS.src = 'today.html?t=' + Date.now();
 
   function show(which, remember){
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
