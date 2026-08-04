@@ -50,23 +50,32 @@
   .chip small{color:var(--sub)}
 
   .scroll{flex:1 1 auto;overflow-y:auto;position:relative}
-  .grid{position:relative;margin:0 10px 40px 46px}
-  .hr{position:absolute;left:-46px;right:0;height:var(--hour);border-top:1px solid var(--line)}
-  .hr span{position:absolute;left:0;top:-7px;width:40px;text-align:right;color:var(--sub);font-size:10.5px}
+  /* 時間軸は広げすぎない。読みやすい幅に収めて中央寄せ */
+  .page{max-width:640px;margin:0 auto;padding:0 12px 40px 58px}
+  .grid{position:relative;margin:0}
+  .hr{position:absolute;left:-58px;right:0;height:var(--hour);border-top:1px solid var(--line)}
+  .hr span{position:absolute;left:0;top:-7px;width:46px;text-align:right;color:var(--sub);font-size:10.5px}
   .hr.half{border-top-style:dotted;opacity:.5}
-  .now{position:absolute;left:-46px;right:0;height:0;border-top:2px solid var(--danger);z-index:4;pointer-events:none}
-  .now::after{content:"";position:absolute;left:44px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
+  .now{position:absolute;left:-58px;right:0;height:0;border-top:2px solid var(--danger);z-index:4;pointer-events:none}
+  .now::after{content:"";position:absolute;left:50px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
 
   .blk{position:absolute;left:0;right:0;border-radius:7px;padding:3px 7px;overflow:hidden;
     border:1px solid transparent;cursor:grab;user-select:none;touch-action:none;z-index:2}
   .blk:active{cursor:grabbing}
   .blk .t{font-size:10px;font-weight:700;opacity:.85;line-height:1.2}
   .blk .n{font-size:11.5px;font-weight:600;line-height:1.25;margin-top:1px}
+  /* 短いブロックは1行にまとめる。名前が切れないよう時刻は縮め、末尾を省略記号にする */
+  .blk.slim{display:flex;align-items:center;gap:6px;padding:0 7px}
+  .blk.slim .t{flex:0 0 auto;font-size:9.5px;white-space:nowrap;margin:0}
+  .blk.slim .n{flex:1 1 auto;min-width:0;margin:0;font-size:11px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
   .blk[data-k=k]{background:rgba(79,140,255,.20);border-color:rgba(79,140,255,.55);color:#cfe0ff}
   .blk[data-k=p]{background:rgba(89,217,138,.18);border-color:rgba(89,217,138,.5);color:#cdf4dc}
   .blk[data-k=f]{background:rgba(201,162,39,.20);border-color:rgba(201,162,39,.55);color:#f4e4b4}
   .blk.drag{opacity:.85;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.5)}
-  .grip{position:absolute;left:0;right:0;bottom:0;height:9px;cursor:ns-resize;touch-action:none}
+  /* 伸縮ハンドルは十分な高さのブロックにだけ出す。
+     短いブロックだと全面がハンドルになり「動かしたいのに伸びる」事故が起きるため。 */
+  .grip{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;touch-action:none}
   .grip::after{content:"";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
     width:26px;height:2px;border-radius:2px;background:currentColor;opacity:.45}
 
@@ -102,6 +111,7 @@
   <button class="btn" id="prev">‹</button>
   <button class="btn" id="next">›</button>
   <button class="btn" id="add">＋ ブロック</button>
+  <button class="btn" id="undo" title="元に戻す（Cmd/Ctrl+Z）" disabled>↶ 戻す</button>
   <button class="btn" id="sideBtn">📋 タスク</button>
   <button class="btn ghost" id="seed">今日の予定を読込</button>
   <button class="btn ghost" id="copyPrev">前日をコピー</button>
@@ -119,7 +129,9 @@
   </aside>
 
   <div class="scroll" id="scroll">
-    <div class="grid" id="grid"></div>
+    <div class="page">
+      <div class="grid" id="grid"></div>
+    </div>
   </div>
 </div>
 
@@ -198,6 +210,23 @@ function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 function load(key){
   try{ return JSON.parse(localStorage.getItem(storeKey(key))||"[]"); }catch(e){ return []; }
 }
+
+/* ---- 元に戻す（Cmd/Ctrl+Z）----
+   変更を加える直前にスナップショットを積み、undo で1つ前の状態に戻す。 */
+var history = [];
+function pushHistory(){
+  history.push(JSON.stringify(blocks));
+  if(history.length > 50) history.shift();
+  document.getElementById("undo").disabled = false;
+}
+function undo(){
+  if(!history.length){ setStatus("戻せる操作はありません"); return; }
+  try{ blocks = JSON.parse(history.pop()); }catch(e){ return; }
+  localStorage.setItem(storeKey(curDate), JSON.stringify(blocks));
+  render();
+  setStatus("元に戻しました（残り "+history.length+"）");
+  if(!history.length) document.getElementById("undo").disabled = true;
+}
 function save(){
   try{
     localStorage.setItem(storeKey(curDate), JSON.stringify(blocks));
@@ -223,14 +252,19 @@ function drawGrid(){
 function drawBlocks(){
   Array.prototype.forEach.call(grid.querySelectorAll(".blk"), function(el){ el.remove(); });
   blocks.slice().sort(function(a,b){ return a.t-b.t; }).forEach(function(b){
+    var h = Math.max(b.d * PPM, 20);
+    var slim = h < 40;                       // 2行に収まらない高さなら1行表示
     var el = document.createElement("div");
-    el.className = "blk"; el.dataset.k = b.k; el.dataset.id = b.id;
+    el.className = "blk" + (slim ? " slim" : "");
+    el.dataset.k = b.k; el.dataset.id = b.id;
     el.style.top = ((b.t - START_H*60) * PPM) + "px";
-    el.style.height = Math.max(b.d * PPM, 16) + "px";
-    var range = b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d) : hhmm(b.t);
-    el.innerHTML = '<div class="t">'+range+(b.d?' ・'+b.d+'分':'')+'</div>'+
-                   '<div class="n"></div><div class="grip"></div>';
+    el.style.height = h + "px";
+    var range = slim ? hhmm(b.t) : (b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+' ・'+b.d+'分' : hhmm(b.t));
+    el.innerHTML = '<div class="t"></div><div class="n"></div>' +
+                   (h >= 34 ? '<div class="grip"></div>' : '');   // 低いブロックには伸縮ハンドルを出さない
+    el.querySelector(".t").textContent = range;
     el.querySelector(".n").textContent = b.name;
+    el.title = (b.d ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+" ("+b.d+"分) " : hhmm(b.t)+" ") + b.name;
     grid.appendChild(el);
   });
   drawNow();
@@ -258,6 +292,7 @@ grid.addEventListener("pointerdown", function(e){
   var b = blocks.find(function(x){ return x.id === el.dataset.id; });
   if(!b) return;
   var resizing = !!e.target.closest(".grip");
+  pushHistory();
   drag = {el:el, b:b, resizing:resizing, y0:e.clientY, t0:b.t, d0:b.d, moved:false};
   el.setPointerCapture(e.pointerId);
   el.classList.add("drag");
@@ -298,6 +333,7 @@ grid.addEventListener("click", function(e){
 
 /* ============ 追加・編集 ============ */
 function addBlock(b, edit){
+  pushHistory();
   var nb = {id:uid(), t:b.t, d:b.d, name:b.name||"", k:b.k||"p", detail:b.detail||""};
   blocks.push(nb); save(); render();
   if(edit) openEditor(nb.id);
@@ -328,6 +364,7 @@ document.querySelectorAll("#fKind .kind").forEach(function(el){
 });
 document.getElementById("fSave").addEventListener("click", function(){
   var b = blocks.find(function(x){ return x.id===editingId; }); if(!b) return;
+  pushHistory();
   b.name = document.getElementById("fName").value.trim() || "（無題）";
   b.t = clamp(snap(toMin(document.getElementById("fStart").value)), 0, END_H*60);
   b.d = clamp(parseInt(document.getElementById("fDur").value||"0",10), 0, END_H*60-b.t);
@@ -337,6 +374,7 @@ document.getElementById("fSave").addEventListener("click", function(){
   save(); render(); closeEditor();
 });
 document.getElementById("fDel").addEventListener("click", function(){
+  pushHistory();
   blocks = blocks.filter(function(x){ return x.id!==editingId; });
   save(); render(); closeEditor();
 });
@@ -347,6 +385,8 @@ mask.addEventListener("click", function(e){ if(e.target===mask) closeEditor(); }
 var dateEl = document.getElementById("date");
 function setDate(key){
   curDate = key; dateEl.value = key;
+  history = []; 
+  var ub = document.getElementById("undo"); if(ub) ub.disabled = true;
   blocks = load(key);
   render();
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
@@ -355,6 +395,10 @@ dateEl.addEventListener("change", function(){ setDate(dateEl.value); });
 function shiftDate(n){
   var d = new Date(curDate+"T00:00:00"); d.setDate(d.getDate()+n); setDate(dateKey(d));
 }
+document.getElementById("undo").addEventListener("click", undo);
+document.addEventListener("keydown", function(e){
+  if((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")){ e.preventDefault(); undo(); }
+});
 document.getElementById("prev").addEventListener("click", function(){ shiftDate(-1); });
 document.getElementById("next").addEventListener("click", function(){ shiftDate(1); });
 
@@ -365,6 +409,7 @@ document.getElementById("add").addEventListener("click", function(){
 document.getElementById("clear").addEventListener("click", function(){
   if(!blocks.length) return;
   if(confirm(curDate+" のブロックを全部消します。よろしいですか？")){
+    pushHistory();
     blocks = []; save(); render();
   }
 });
@@ -373,6 +418,7 @@ document.getElementById("copyPrev").addEventListener("click", function(){
   var prev = load(dateKey(d));
   if(!prev.length){ alert("前日のプランがありません"); return; }
   if(blocks.length && !confirm("今の内容を置き換えます。よろしいですか？")) return;
+  pushHistory();
   blocks = prev.map(function(b){ return {id:uid(), t:b.t, d:b.d, name:b.name, k:b.k, detail:b.detail||""}; });
   save(); render();
 });
@@ -386,6 +432,7 @@ document.getElementById("seed").addEventListener("click", function(){
     var rows = doc.querySelectorAll("#list > li");
     if(!rows.length){ setStatus("読み込めませんでした"); return; }
     if(blocks.length && !confirm("今の内容を置き換えます。よろしいですか？")) { setStatus(""); return; }
+    pushHistory();
     var out = [];
     Array.prototype.forEach.call(rows, function(li){
       var time = (li.querySelector(".time")||{}).textContent || "";
