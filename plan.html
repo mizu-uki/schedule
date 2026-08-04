@@ -117,6 +117,8 @@
   <button class="btn" id="sideBtn">📋 タスク</button>
   <button class="btn ghost" id="seed">今日の予定を読込</button>
   <button class="btn ghost" id="copyPrev">前日をコピー</button>
+  <button class="btn ghost" id="push" title="この端末の内容をGitHubに保存（バックアップ＋他端末へ共有）">☁ 保存</button>
+  <button class="btn ghost" id="pull" title="GitHubに保存された内容を読み込む">☁ 読込</button>
   <span class="spacer"></span>
   <span class="status" id="status">—</span>
   <button class="btn ghost" id="clear">全消去</button>
@@ -186,8 +188,10 @@ var curDate = null, editingId = null;
 /* 毎日その日を開いたときに自動で入る固定枠。
    一度入れた日は「投入済み」の印を付け、消しても復活させない（消したのは本人の判断なので）。 */
 var DAILY_FIXED = [
-  {t:12*60, d:30, name:"ランチ",   k:"f"},
-  {t:19*60, d:30, name:"ディナー", k:"f"}
+  {t: 5*60, d:30, name:"明朝タスク", k:"f"},
+  {t:12*60, d:30, name:"ランチ",     k:"f"},
+  {t:19*60, d:30, name:"ディナー",   k:"f"},
+  {t:22*60, d:30, name:"前夜タスク", k:"f"}
 ];
 
 var TEMPLATES = [
@@ -547,9 +551,93 @@ function fetchTodoist(){
   });
 }
 
+/* ============ GitHub 同期 ============
+   PCで「☁保存」→ リポジトリの plan.json を更新 → スマホは「☁読込」で取得。
+   ・トークンはこの端末のlocalStorageにだけ置き、リポジトリには絶対に入れない。
+   ・読み込みは公開URLからなのでトークン不要（スマホ側にトークンを置かなくてよい）。
+   ・plan.json は公開リポジトリに入る＝内容は公開される。today.html と同じ扱い。 */
+var REPO = "mizu-uki/schedule", FILE = "plan.json";
+
+function allPlans(){
+  var out = {};
+  Object.keys(localStorage).forEach(function(k){
+    if(k.indexOf("planner:") !== 0) return;
+    try{
+      var v = JSON.parse(localStorage.getItem(k));
+      if(v && v.length) out[k.slice(8)] = v;
+    }catch(e){}
+  });
+  return out;
+}
+function b64(str){                       // UTF-8 を安全にbase64化
+  return btoa(String.fromCharCode.apply(null, new TextEncoder().encode(str)));
+}
+function ghToken(force){
+  var t = force ? null : localStorage.getItem("ghToken");
+  if(!t){
+    t = prompt("GitHub のトークン（Contents 書き込み可）を貼り付けてください。\n"+
+               "この端末にだけ保存され、リポジトリには入りません。");
+    if(!t) return null;
+    localStorage.setItem("ghToken", t.trim());
+  }
+  return t.trim();
+}
+
+document.getElementById("push").addEventListener("click", function(){
+  var tk = ghToken(); if(!tk) return;
+  var payload = JSON.stringify({updated:new Date().toISOString(), plans:allPlans()}, null, 1);
+  setStatus("保存中…");
+  var api = "https://api.github.com/repos/"+REPO+"/contents/"+FILE;
+  var head = {Authorization:"Bearer "+tk, Accept:"application/vnd.github+json"};
+  // 既存ファイルの sha を取得（無ければ新規作成）
+  fetch(api+"?t="+Date.now(), {headers:head, cache:"no-store"})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(cur){
+      return fetch(api, {method:"PUT", headers:head, body:JSON.stringify({
+        message:"Update plan.json from planner",
+        content:b64(payload),
+        sha: cur && cur.sha ? cur.sha : undefined
+      })});
+    })
+    .then(function(r){
+      if(r.status === 401 || r.status === 403){ localStorage.removeItem("ghToken");
+        throw new Error("トークンが無効です。もう一度押して入れ直してください"); }
+      if(!r.ok) throw new Error("保存できませんでした ("+r.status+")");
+      setStatus("GitHubに保存しました "+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}));
+    })
+    .catch(function(e){ setStatus(e.message || "保存に失敗しました"); });
+});
+
+document.getElementById("pull").addEventListener("click", function(){ pullPlans(true); });
+
+function pullPlans(interactive){
+  setStatus("読込中…");
+  return fetch(FILE+"?t="+Date.now(), {cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("保存データがまだありません"); return r.json(); })
+    .then(function(j){
+      var days = Object.keys(j.plans || {});
+      if(!days.length) throw new Error("保存データが空です");
+      if(interactive && !confirm(days.length+"日分を読み込みます。\n"+
+         "この端末の同じ日付の内容は置き換わります。よろしいですか？")){ setStatus(""); return; }
+      days.forEach(function(d){
+        localStorage.setItem("planner:"+d, JSON.stringify(j.plans[d]));
+        localStorage.setItem("planner-seeded:"+d, "1");   // 読み込んだ日は固定枠を再投入しない
+      });
+      if(curDate){ blocks = load(curDate); render(); }
+      setStatus("読み込みました（"+days.length+"日分）");
+    })
+    .catch(function(e){ setStatus(e.message || "読み込めませんでした"); });
+}
+
 /* ============ 起動 ============ */
 drawGrid();
-setDate(dateKey(new Date()));
+(function(){
+  var t = dateKey(new Date());
+  // 端末にその日のデータが無いときだけ、保存済みの内容を静かに取り込む
+  // （スマホで開くだけでPCの内容が出るように。ローカルの編集は上書きしない）
+  if(localStorage.getItem(storeKey(t))){ setDate(t); return; }
+  pullPlans(false).then(function(){ setDate(t); }, function(){ setDate(t); });
+})();
 setInterval(drawNow, 60000);
 // 現在時刻あたりまでスクロール
 (function(){
