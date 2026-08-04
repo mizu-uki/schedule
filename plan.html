@@ -199,14 +199,14 @@ var START_H = 4, END_H = 24;                 // 表示する時間帯
 var HOUR = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
 var PPM = HOUR / 60;                          // 1分あたりのピクセル
 var SNAP = 5;                                 // 5分刻み
-var REFRESH_DEFAULT = 20*60 + 30;             // ディナーが無い日の既定
-/* リフレッシュ帯の開始は「ディナーを食べ終わったら」。
+var REFRESH_DEFAULT = 20*60;                  // ディナーが無い日の既定
+/* リフレッシュ帯の開始は「ディナーを食べ始めたら」。
    時刻ではなく既存の行動に紐づけたほうが習慣として定着しやすいため、
-   ディナーを動かせば帯もついてくる。 */
+   ディナーを動かせば帯もついてくる（食事そのものもリフレッシュの一部）。 */
 function refreshFrom(){
   var dn = blocks.filter(function(b){ return b.name.indexOf("ディナー") === 0; })
                  .sort(function(a,b){ return a.t-b.t; })[0];
-  return dn ? dn.t + dn.d : REFRESH_DEFAULT;
+  return dn ? dn.t : REFRESH_DEFAULT;
 }
 var blocks = [];                              // {id,t,d,name,k,detail}
 var curDate = null, editingId = null;
