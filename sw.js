@@ -14,8 +14,9 @@ self.addEventListener('fetch', function(e){
   if(req.method !== 'GET') return;
 
   var isDoc = req.mode === 'navigate';                    // index.html 本体
-  var isToday = req.url.indexOf('today.html') !== -1;     // 日々差し替わる予定
-  if(!isDoc && !isToday) return;                          // それ以外は既定動作
+  var isApp = req.url.indexOf('today.html') !== -1 ||      // 日々差し替わる予定
+              req.url.indexOf('plan.html')  !== -1;       // プランナー本体（更新が多い）
+  if(!isDoc && !isApp) return;                            // それ以外は既定動作
 
   // cache:'no-store' で HTTP キャッシュを迂回して取り直す。
   // 失敗（オフライン等）したら通常の取得にフォールバックし、ページを壊さない。

@@ -67,12 +67,14 @@
   <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
   <!-- src は日付付きでJSから設定（日をまたいだら必ず最新の today.html を取りに行くため） -->
   <iframe id="fS" title="今日の予定"></iframe>
-  <iframe id="fP" title="デイプランナー" src="plan.html"></iframe>
+  <!-- src は JS から付与（plan.html も更新が即反映されるように） -->
+  <iframe id="fP" title="デイプランナー"></iframe>
 </div>
 
 <script>
   var fM = document.getElementById('fM'), fS = document.getElementById('fS'),
       fP = document.getElementById('fP');
+  fP.src = 'plan.html?t=' + Date.now();   // 10分キャッシュで古い版が動くのを防ぐ
   var BTN = { m: document.getElementById('tabM'),
               s: document.getElementById('tabS'),
               p: document.getElementById('tabP'),
