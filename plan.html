@@ -213,19 +213,19 @@ function load(key){
 
 /* ---- 元に戻す（Cmd/Ctrl+Z）----
    変更を加える直前にスナップショットを積み、undo で1つ前の状態に戻す。 */
-var history = [];
+var undoStack = [];
 function pushHistory(){
-  history.push(JSON.stringify(blocks));
-  if(history.length > 50) history.shift();
+  undoStack.push(JSON.stringify(blocks));
+  if(undoStack.length > 50) undoStack.shift();
   document.getElementById("undo").disabled = false;
 }
 function undo(){
-  if(!history.length){ setStatus("戻せる操作はありません"); return; }
-  try{ blocks = JSON.parse(history.pop()); }catch(e){ return; }
+  if(!undoStack.length){ setStatus("戻せる操作はありません"); return; }
+  try{ blocks = JSON.parse(undoStack.pop()); }catch(e){ return; }
   localStorage.setItem(storeKey(curDate), JSON.stringify(blocks));
   render();
-  setStatus("元に戻しました（残り "+history.length+"）");
-  if(!history.length) document.getElementById("undo").disabled = true;
+  setStatus("元に戻しました（残り "+undoStack.length+"）");
+  if(!undoStack.length) document.getElementById("undo").disabled = true;
 }
 function save(){
   try{
@@ -385,7 +385,7 @@ mask.addEventListener("click", function(e){ if(e.target===mask) closeEditor(); }
 var dateEl = document.getElementById("date");
 function setDate(key){
   curDate = key; dateEl.value = key;
-  history = []; 
+  undoStack = []; 
   var ub = document.getElementById("undo"); if(ub) ub.disabled = true;
   blocks = load(key);
   render();
