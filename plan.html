@@ -508,6 +508,7 @@ function setDate(key){
   var ub = document.getElementById("undo"); if(ub) ub.disabled = true;
   blocks = load(key);
   seedDailyFixed(key);
+  migrateFixed(key);
   if(localStorage.getItem("gcalUrl")) fetchGCal(false);   // 設定済みなら日付に合わせて取り直す
   render();
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
@@ -638,6 +639,7 @@ function fetchGCal(interactive){
   var box = document.getElementById("gcal");
   var c = gcalConf(false);
   if(!c){ return; }
+  var reqDate = curDate;            // この取得がどの日のものかを覚えておく
   box.innerHTML = '<div class="chip">取得中…</div>';
   var u = c.url + (c.url.indexOf("?")>=0 ? "&" : "?") +
           "key=" + encodeURIComponent(c.key) + "&date=" + curDate + "&t=" + Date.now();
@@ -645,6 +647,9 @@ function fetchGCal(interactive){
     .then(function(r){ if(!r.ok) throw new Error("取得失敗 "+r.status); return r.json(); })
     .then(function(j){
       if(j.error) throw new Error("合言葉が違うようです");
+      // 日付を切り替えた後に古い応答が返ってくることがある。別の日の分は捨てる。
+      // （これを見落として、他の日の予定が紛れ込む不具合が実際に起きた）
+      if(reqDate !== curDate || (j.date && j.date !== reqDate)) return;
       box.innerHTML = "";
       if(!j.events || !j.events.length){
         box.innerHTML = '<div class="chip">この日の予定はありません</div>';
@@ -667,7 +672,7 @@ function fetchGCal(interactive){
         });
         box.appendChild(b);
       });
-      autoImportGCal(j.events);                 // 取得できたらそのままタイムラインへ
+      autoImportGCal(j.events, reqDate);        // 取得できたらそのままタイムラインへ
       var re = document.createElement("button");
       re.className = "chip"; re.textContent = "↻ 取り直す";
       re.addEventListener("click", function(){ fetchGCal(false); });
@@ -691,10 +696,21 @@ function fetchGCal(interactive){
    ・一度取り込んだ予定は記録しておくので、消しても復活しない
    ・カレンダー側で時刻が変わった予定は、同じ名前のブロックを動かして追従する
    ・手で足したブロックには触らない（src が "gcal" のものだけ扱う） */
-function autoImportGCal(events){
-  if(!events || !events.length) return;
+function autoImportGCal(events, forDate){
+  if(forDate && forDate !== curDate) return;          // 念のため二重チェック
+  events = events || [];
   var mark = "planner-gcal:" + curDate, seen = [];
   try{ seen = JSON.parse(localStorage.getItem(mark) || "[]") || []; }catch(e){ seen = []; }
+
+  // カレンダーから消えた（別の日に移った）予定は、こちらからも取り下げる。
+  // カレンダーが正。手で置いたブロック（src なし）には触らない。
+  var titles = events.map(function(e){ return e.title; });
+  var removed = 0;
+  blocks = blocks.filter(function(b){
+    if(b.src !== "gcal") return true;
+    if(titles.indexOf(b.name) !== -1) return true;
+    removed++; return false;
+  });
 
   var added = 0, moved = 0;
   events.forEach(function(ev){
@@ -716,10 +732,13 @@ function autoImportGCal(events){
   });
 
   try{ localStorage.setItem(mark, JSON.stringify(seen)); }catch(e){}
-  if(added || moved){
+  if(added || moved || removed){
     save(); render();
-    setStatus("カレンダーから" + (added ? added+"件追加" : "") + (added&&moved ? "・" : "") +
-              (moved ? moved+"件更新" : ""));
+    var msg = [];
+    if(added) msg.push(added+"件追加");
+    if(moved) msg.push(added+moved ? moved+"件更新" : "");
+    if(removed) msg.push(removed+"件取り下げ");
+    setStatus("カレンダー同期：" + msg.filter(Boolean).join("・"));
   }
 }
 
