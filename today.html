@@ -100,6 +100,35 @@
 
 <script>
   var KEY = "sched-2026-07-28";
+
+  // 自分で組んだプラン（デイプランナー）があれば、それを優先して表示する
+  (function(){
+    var day = KEY.replace("sched-","").slice(0,10);
+    var plan;
+    try{ plan = JSON.parse(localStorage.getItem("planner:"+day)||"null"); }catch(e){ plan = null; }
+    if(!plan || !plan.length) return;                 // 無ければ配信されたそのままを使う
+    function pad(n){ return (n<10?"0":"")+n; }
+    function hhmm(m){ return pad(Math.floor(m/60)%24)+":"+pad(m%60); }
+    var label = {k:"業務", p:"個人", f:"固定"};
+    var ul = document.getElementById("list");
+    ul.innerHTML = plan.slice().sort(function(a,b){ return a.t-b.t; }).map(function(b){
+      var k = (b.k==="k"||b.k==="p"||b.k==="f") ? b.k : "p";
+      var time = b.d ? hhmm(b.t)+"–"+hhmm(b.t+b.d) : hhmm(b.t);
+      var det = "";
+      if(b.detail){
+        var lines = String(b.detail).split(/\n+/).filter(Boolean);
+        det = '<div class="detail"><ul>' +
+              lines.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("") + "</ul></div>";
+      }
+      return '<li data-k="'+k+'"><div class="box"></div><div class="body">'+
+             '<div class="time">'+time+'<span class="tag '+k+'">'+label[k]+'</span></div>'+
+             '<div class="task">'+esc(b.name)+'</div>'+det+'</div>'+
+             (det ? '<span class="more">\u25be</span>' : '')+'</li>';
+    }).join("\n");
+    function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  })();
+
   var items = Array.prototype.slice.call(document.querySelectorAll("#list > li"));
   var fill = document.getElementById("fill");
   var count = document.getElementById("count");

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<!--
+  デイプランナー（自分で1日を組む画面）。
+  ・時間軸にブロックを置き、ドラッグで移動／下端をつまんで伸縮
+  ・データは localStorage の "planner:YYYY-MM-DD"（1日1レコード）
+  ・「今日の予定を読み込む」で、配信中の today.html を種として取り込める
+  Googleカレンダーとは独立。ここのデータは他所へ出ていかない。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>デイプランナー</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7eaf0; --sub:#8b93a3;
+    --k:#4f8cff; --p:#59d98a; --f:#c9a227; --danger:#ff5d5d;
+    --hour:56px;              /* 1時間の高さ。1分 = var(--hour)/60 */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+
+  /* ---- ツールバー ---- */
+  .bar{flex:0 0 auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .bar input[type=date]{background:var(--card);color:var(--text);border:1px solid var(--line);
+    border-radius:8px;padding:5px 8px;font-size:12.5px;font-family:inherit}
+  .btn{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;
+    padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btn:hover{border-color:var(--sub)}
+  .btn.primary{background:var(--k);border-color:transparent;color:#fff}
+  .btn.ghost{background:transparent;color:var(--sub)}
+  .spacer{flex:1 1 auto}
+  .status{color:var(--sub);font-size:11.5px;white-space:nowrap}
+
+  /* ---- 本体 ---- */
+  .wrap{flex:1 1 auto;display:flex;min-height:0}
+  .side{flex:0 0 190px;border-right:1px solid var(--line);overflow-y:auto;padding:8px;display:none}
+  .side.on{display:block}
+  .side h3{margin:2px 0 6px;font-size:11px;color:var(--sub);letter-spacing:.4px}
+  .chip{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
+    border-radius:8px;padding:6px 8px;margin:0 0 5px;font-size:11.5px;color:var(--text);cursor:pointer;
+    font-family:inherit;line-height:1.35}
+  .chip:hover{border-color:var(--k)}
+  .chip small{color:var(--sub)}
+
+  .scroll{flex:1 1 auto;overflow-y:auto;position:relative}
+  .grid{position:relative;margin:0 10px 40px 46px}
+  .hr{position:absolute;left:-46px;right:0;height:var(--hour);border-top:1px solid var(--line)}
+  .hr span{position:absolute;left:0;top:-7px;width:40px;text-align:right;color:var(--sub);font-size:10.5px}
+  .hr.half{border-top-style:dotted;opacity:.5}
+  .now{position:absolute;left:-46px;right:0;height:0;border-top:2px solid var(--danger);z-index:4;pointer-events:none}
+  .now::after{content:"";position:absolute;left:44px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
+
+  .blk{position:absolute;left:0;right:0;border-radius:7px;padding:3px 7px;overflow:hidden;
+    border:1px solid transparent;cursor:grab;user-select:none;touch-action:none;z-index:2}
+  .blk:active{cursor:grabbing}
+  .blk .t{font-size:10px;font-weight:700;opacity:.85;line-height:1.2}
+  .blk .n{font-size:11.5px;font-weight:600;line-height:1.25;margin-top:1px}
+  .blk[data-k=k]{background:rgba(79,140,255,.20);border-color:rgba(79,140,255,.55);color:#cfe0ff}
+  .blk[data-k=p]{background:rgba(89,217,138,.18);border-color:rgba(89,217,138,.5);color:#cdf4dc}
+  .blk[data-k=f]{background:rgba(201,162,39,.20);border-color:rgba(201,162,39,.55);color:#f4e4b4}
+  .blk.drag{opacity:.85;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  .grip{position:absolute;left:0;right:0;bottom:0;height:9px;cursor:ns-resize;touch-action:none}
+  .grip::after{content:"";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
+    width:26px;height:2px;border-radius:2px;background:currentColor;opacity:.45}
+
+  /* ---- 編集ダイアログ ---- */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:20;
+    align-items:center;justify-content:center;padding:14px}
+  .mask.on{display:flex}
+  .dlg{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;
+    width:100%;max-width:380px}
+  .dlg h2{margin:0 0 10px;font-size:14px}
+  .row{margin-bottom:9px}
+  .row label{display:block;font-size:11px;color:var(--sub);margin-bottom:3px}
+  .row input,.row textarea,.row select{width:100%;background:var(--bg);color:var(--text);
+    border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;font-family:inherit}
+  .row textarea{min-height:56px;resize:vertical}
+  .two{display:flex;gap:8px}
+  .two>*{flex:1}
+  .kinds{display:flex;gap:6px}
+  .kind{flex:1;text-align:center;padding:6px;border:1px solid var(--line);border-radius:8px;
+    font-size:11.5px;font-weight:700;cursor:pointer;color:var(--sub)}
+  .kind.on[data-k=k]{background:rgba(79,140,255,.2);border-color:var(--k);color:#cfe0ff}
+  .kind.on[data-k=p]{background:rgba(89,217,138,.18);border-color:var(--p);color:#cdf4dc}
+  .kind.on[data-k=f]{background:rgba(201,162,39,.2);border-color:var(--f);color:#f4e4b4}
+  .acts{display:flex;gap:8px;margin-top:12px}
+  .acts .btn{flex:1;padding:8px}
+  .btn.del{color:var(--danger);border-color:rgba(255,93,93,.4)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <input type="date" id="date">
+  <button class="btn" id="prev">‹</button>
+  <button class="btn" id="next">›</button>
+  <button class="btn" id="add">＋ ブロック</button>
+  <button class="btn" id="sideBtn">📋 タスク</button>
+  <button class="btn ghost" id="seed">今日の予定を読込</button>
+  <button class="btn ghost" id="copyPrev">前日をコピー</button>
+  <span class="spacer"></span>
+  <span class="status" id="status">—</span>
+  <button class="btn ghost" id="clear">全消去</button>
+</div>
+
+<div class="wrap">
+  <aside class="side" id="side">
+    <h3>テンプレート（タップで追加）</h3>
+    <div id="tpl"></div>
+    <h3 style="margin-top:12px">TODOIST（当日）</h3>
+    <div id="todoist"><button class="chip" id="tdSetup">⚙ トークンを設定して取得</button></div>
+  </aside>
+
+  <div class="scroll" id="scroll">
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="dlg">
+    <h2 id="dlgTitle">ブロックを編集</h2>
+    <div class="row">
+      <label>やること</label>
+      <input id="fName" placeholder="例：【G】出荷処理">
+    </div>
+    <div class="row two">
+      <div>
+        <label>開始</label>
+        <input id="fStart" type="time" step="300">
+      </div>
+      <div>
+        <label>長さ（分）</label>
+        <input id="fDur" type="number" min="0" step="5">
+      </div>
+    </div>
+    <div class="row">
+      <label>区分</label>
+      <div class="kinds" id="fKind">
+        <div class="kind" data-k="k">業務</div>
+        <div class="kind" data-k="p">個人</div>
+        <div class="kind" data-k="f">固定</div>
+      </div>
+    </div>
+    <div class="row">
+      <label>詳細（任意・チェックリストで折りたたみ表示）</label>
+      <textarea id="fDetail" placeholder="1行に1項目"></textarea>
+    </div>
+    <div class="acts">
+      <button class="btn del" id="fDel">削除</button>
+      <button class="btn" id="fCancel">閉じる</button>
+      <button class="btn primary" id="fSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 定数・状態 ============ */
+var START_H = 4, END_H = 24;                 // 表示する時間帯
+var HOUR = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
+var PPM = HOUR / 60;                          // 1分あたりのピクセル
+var SNAP = 5;                                 // 5分刻み
+var blocks = [];                              // {id,t,d,name,k,detail}
+var curDate = null, editingId = null;
+
+var TEMPLATES = [
+  {name:"【G】倉庫対応", d:90, k:"k"},
+  {name:"【G】出荷処理", d:30, k:"k"},
+  {name:"【G】低評価レビュー返金処理", d:30, k:"k"},
+  {name:"【G】退勤〆作業", d:30, k:"k"},
+  {name:"ブログ記事執筆＋BGM動画作成", d:60, k:"k"},
+  {name:"資格勉強120分（簿記2級）", d:120, k:"p"},
+  {name:"ジム", d:75, k:"p"},
+  {name:"シャワー", d:15, k:"p"},
+  {name:"夕飯", d:30, k:"p"},
+  {name:"X運用", d:15, k:"p"},
+  {name:"読書3ページ＋リベシティ", d:30, k:"p"},
+  {name:"ランチ", d:30, k:"f"},
+  {name:"就寝準備", d:30, k:"p"}
+];
+
+/* ============ 小道具 ============ */
+function pad(n){ return (n<10?"0":"")+n; }
+function hhmm(min){ return pad(Math.floor(min/60))+":"+pad(min%60); }
+function toMin(s){ var a=(s||"0:00").split(":"); return (+a[0])*60+(+a[1]); }
+function dateKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function storeKey(k){ return "planner:"+k; }
+function uid(){ return "b"+Math.random().toString(36).slice(2,9); }
+function snap(m){ return Math.round(m/SNAP)*SNAP; }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+function load(key){
+  try{ return JSON.parse(localStorage.getItem(storeKey(key))||"[]"); }catch(e){ return []; }
+}
+function save(){
+  try{
+    localStorage.setItem(storeKey(curDate), JSON.stringify(blocks));
+    setStatus("保存済み "+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){ setStatus("保存に失敗しました"); }
+}
+function setStatus(t){ document.getElementById("status").textContent = t; }
+
+/* ============ 描画 ============ */
+var grid = document.getElementById("grid");
+
+function drawGrid(){
+  grid.style.height = ((END_H-START_H)*HOUR)+"px";
+  var html = "";
+  for(var h=START_H; h<END_H; h++){
+    var top = (h-START_H)*HOUR;
+    html += '<div class="hr" style="top:'+top+'px"><span>'+pad(h)+':00</span></div>';
+    html += '<div class="hr half" style="top:'+(top+HOUR/2)+'px"></div>';
+  }
+  grid.innerHTML = html;
+}
+
+function drawBlocks(){
+  Array.prototype.forEach.call(grid.querySelectorAll(".blk"), function(el){ el.remove(); });
+  blocks.slice().sort(function(a,b){ return a.t-b.t; }).forEach(function(b){
+    var el = document.createElement("div");
+    el.className = "blk"; el.dataset.k = b.k; el.dataset.id = b.id;
+    el.style.top = ((b.t - START_H*60) * PPM) + "px";
+    el.style.height = Math.max(b.d * PPM, 16) + "px";
+    var range = b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d) : hhmm(b.t);
+    el.innerHTML = '<div class="t">'+range+(b.d?' ・'+b.d+'分':'')+'</div>'+
+                   '<div class="n"></div><div class="grip"></div>';
+    el.querySelector(".n").textContent = b.name;
+    grid.appendChild(el);
+  });
+  drawNow();
+}
+
+function drawNow(){
+  var old = grid.querySelector(".now"); if(old) old.remove();
+  if(curDate !== dateKey(new Date())) return;
+  var n = new Date(), m = n.getHours()*60 + n.getMinutes();
+  if(m < START_H*60 || m > END_H*60) return;
+  var el = document.createElement("div");
+  el.className = "now";
+  el.style.top = ((m - START_H*60)*PPM)+"px";
+  grid.appendChild(el);
+}
+
+function render(){ drawBlocks(); }
+
+/* ============ ドラッグ／リサイズ ============ */
+var drag = null;
+
+grid.addEventListener("pointerdown", function(e){
+  var el = e.target.closest(".blk");
+  if(!el) return;
+  var b = blocks.find(function(x){ return x.id === el.dataset.id; });
+  if(!b) return;
+  var resizing = !!e.target.closest(".grip");
+  drag = {el:el, b:b, resizing:resizing, y0:e.clientY, t0:b.t, d0:b.d, moved:false};
+  el.setPointerCapture(e.pointerId);
+  el.classList.add("drag");
+});
+
+grid.addEventListener("pointermove", function(e){
+  if(!drag) return;
+  var dy = e.clientY - drag.y0;
+  if(Math.abs(dy) > 3) drag.moved = true;
+  var dm = snap(dy / PPM);
+  if(drag.resizing){
+    drag.b.d = clamp(drag.d0 + dm, 0, END_H*60 - drag.b.t);
+  }else{
+    drag.b.t = clamp(snap(drag.t0 + dm), START_H*60, END_H*60 - drag.b.d);
+  }
+  drawBlocks();
+});
+
+function endDrag(){
+  if(!drag) return;
+  var moved = drag.moved, b = drag.b;
+  drag.el && drag.el.classList.remove("drag");
+  drag = null;
+  if(moved){ save(); }
+  else{ openEditor(b.id); }     // 動かしていなければ編集を開く
+  render();
+}
+grid.addEventListener("pointerup", endDrag);
+grid.addEventListener("pointercancel", endDrag);
+
+/* 空き部分をクリック → その時刻に30分ブロックを作る */
+grid.addEventListener("click", function(e){
+  if(e.target.closest(".blk")) return;
+  var rect = grid.getBoundingClientRect();
+  var m = snap((e.clientY - rect.top)/PPM + START_H*60);
+  addBlock({t: clamp(m, START_H*60, END_H*60-30), d:30, name:"", k:"p"}, true);
+});
+
+/* ============ 追加・編集 ============ */
+function addBlock(b, edit){
+  var nb = {id:uid(), t:b.t, d:b.d, name:b.name||"", k:b.k||"p", detail:b.detail||""};
+  blocks.push(nb); save(); render();
+  if(edit) openEditor(nb.id);
+  return nb;
+}
+
+var mask = document.getElementById("mask");
+function openEditor(id){
+  var b = blocks.find(function(x){ return x.id===id; }); if(!b) return;
+  editingId = id;
+  document.getElementById("fName").value = b.name;
+  document.getElementById("fStart").value = hhmm(b.t);
+  document.getElementById("fDur").value = b.d;
+  document.getElementById("fDetail").value = b.detail||"";
+  Array.prototype.forEach.call(document.querySelectorAll("#fKind .kind"), function(el){
+    el.classList.toggle("on", el.dataset.k === b.k);
+  });
+  mask.classList.add("on");
+  setTimeout(function(){ document.getElementById("fName").focus(); }, 30);
+}
+function closeEditor(){ mask.classList.remove("on"); editingId = null; }
+
+document.querySelectorAll("#fKind .kind").forEach(function(el){
+  el.addEventListener("click", function(){
+    document.querySelectorAll("#fKind .kind").forEach(function(x){ x.classList.remove("on"); });
+    el.classList.add("on");
+  });
+});
+document.getElementById("fSave").addEventListener("click", function(){
+  var b = blocks.find(function(x){ return x.id===editingId; }); if(!b) return;
+  b.name = document.getElementById("fName").value.trim() || "（無題）";
+  b.t = clamp(snap(toMin(document.getElementById("fStart").value)), 0, END_H*60);
+  b.d = clamp(parseInt(document.getElementById("fDur").value||"0",10), 0, END_H*60-b.t);
+  var on = document.querySelector("#fKind .kind.on");
+  b.k = on ? on.dataset.k : "p";
+  b.detail = document.getElementById("fDetail").value.trim();
+  save(); render(); closeEditor();
+});
+document.getElementById("fDel").addEventListener("click", function(){
+  blocks = blocks.filter(function(x){ return x.id!==editingId; });
+  save(); render(); closeEditor();
+});
+document.getElementById("fCancel").addEventListener("click", closeEditor);
+mask.addEventListener("click", function(e){ if(e.target===mask) closeEditor(); });
+
+/* ============ ツールバー ============ */
+var dateEl = document.getElementById("date");
+function setDate(key){
+  curDate = key; dateEl.value = key;
+  blocks = load(key);
+  render();
+  setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
+}
+dateEl.addEventListener("change", function(){ setDate(dateEl.value); });
+function shiftDate(n){
+  var d = new Date(curDate+"T00:00:00"); d.setDate(d.getDate()+n); setDate(dateKey(d));
+}
+document.getElementById("prev").addEventListener("click", function(){ shiftDate(-1); });
+document.getElementById("next").addEventListener("click", function(){ shiftDate(1); });
+
+document.getElementById("add").addEventListener("click", function(){
+  var n = new Date(), m = snap(n.getHours()*60+n.getMinutes());
+  addBlock({t:clamp(m, START_H*60, END_H*60-30), d:30, name:"", k:"p"}, true);
+});
+document.getElementById("clear").addEventListener("click", function(){
+  if(!blocks.length) return;
+  if(confirm(curDate+" のブロックを全部消します。よろしいですか？")){
+    blocks = []; save(); render();
+  }
+});
+document.getElementById("copyPrev").addEventListener("click", function(){
+  var d = new Date(curDate+"T00:00:00"); d.setDate(d.getDate()-1);
+  var prev = load(dateKey(d));
+  if(!prev.length){ alert("前日のプランがありません"); return; }
+  if(blocks.length && !confirm("今の内容を置き換えます。よろしいですか？")) return;
+  blocks = prev.map(function(b){ return {id:uid(), t:b.t, d:b.d, name:b.name, k:b.k, detail:b.detail||""}; });
+  save(); render();
+});
+
+/* 配信中の today.html を種として取り込む */
+document.getElementById("seed").addEventListener("click", function(){
+  setStatus("読込中…");
+  fetch("today.html?t="+Date.now(), {cache:"no-store"}).then(function(r){ return r.text(); })
+  .then(function(html){
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    var rows = doc.querySelectorAll("#list > li");
+    if(!rows.length){ setStatus("読み込めませんでした"); return; }
+    if(blocks.length && !confirm("今の内容を置き換えます。よろしいですか？")) { setStatus(""); return; }
+    var out = [];
+    Array.prototype.forEach.call(rows, function(li){
+      var time = (li.querySelector(".time")||{}).textContent || "";
+      var name = (li.querySelector(".task")||{}).textContent || "";
+      var m = time.match(/(\d{1,2}):(\d{2})(?:\s*[–-]\s*(\d{1,2}):(\d{2}))?/);
+      if(!m) return;
+      var t = (+m[1])*60 + (+m[2]);
+      var d = m[3] ? ((+m[3])*60 + (+m[4]) - t) : 0;
+      if(d < 0) d += 24*60;
+      var det = li.querySelector(".detail");
+      out.push({id:uid(), t:t, d:d, name:name.trim(), k:li.dataset.k||"p",
+                detail: det ? det.textContent.replace(/\s+/g," ").trim() : ""});
+    });
+    blocks = out; save(); render();
+    setStatus("読み込みました（"+out.length+"件）");
+  }).catch(function(){ setStatus("読み込みに失敗しました"); });
+});
+
+/* サイドバー */
+var side = document.getElementById("side");
+document.getElementById("sideBtn").addEventListener("click", function(){ side.classList.toggle("on"); });
+(function(){
+  var box = document.getElementById("tpl");
+  TEMPLATES.forEach(function(t){
+    var b = document.createElement("button");
+    b.className = "chip";
+    b.innerHTML = "<span></span><br><small>"+t.d+"分</small>";
+    b.querySelector("span").textContent = t.name;
+    b.addEventListener("click", function(){
+      // 最後のブロックの直後に置く（無ければ現在時刻）
+      var end = blocks.length ? Math.max.apply(null, blocks.map(function(x){return x.t+x.d;})) : null;
+      if(end === null){ var n=new Date(); end = snap(n.getHours()*60+n.getMinutes()); }
+      addBlock({t:clamp(end, START_H*60, END_H*60-t.d), d:t.d, name:t.name, k:t.k});
+      setStatus("追加：" + t.name);
+    });
+    box.appendChild(b);
+  });
+})();
+
+/* Todoist 取り込み（トークンは端末内のみに保存し、外へは出さない） */
+document.getElementById("tdSetup").addEventListener("click", fetchTodoist);
+function fetchTodoist(){
+  var tk = localStorage.getItem("todoistToken");
+  if(!tk){
+    tk = prompt("Todoist API トークンを貼り付けてください。\n（この端末のブラウザ内だけに保存され、外部には送りません）");
+    if(!tk) return;
+    localStorage.setItem("todoistToken", tk.trim());
+  }
+  var box = document.getElementById("todoist");
+  box.innerHTML = '<div class="chip">取得中…</div>';
+  fetch("https://api.todoist.com/api/v1/tasks?limit=200", {headers:{Authorization:"Bearer "+tk.trim()}})
+  .then(function(r){
+    if(r.status === 401){ localStorage.removeItem("todoistToken"); throw new Error("トークンが無効です"); }
+    if(!r.ok) throw new Error("取得失敗 "+r.status);
+    return r.json();
+  })
+  .then(function(j){
+    var list = (j && j.results) ? j.results : (Array.isArray(j)? j : []);
+    var today = curDate;
+    var hit = list.filter(function(t){
+      return t.due && String(t.due.date).slice(0,10) <= today;
+    });
+    box.innerHTML = "";
+    if(!hit.length){ box.innerHTML = '<div class="chip">当日のタスクはありません</div>'; }
+    hit.forEach(function(t){
+      var b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = t.content;
+      b.addEventListener("click", function(){
+        var end = blocks.length ? Math.max.apply(null, blocks.map(function(x){return x.t+x.d;}))
+                                : snap(new Date().getHours()*60+new Date().getMinutes());
+        addBlock({t:clamp(end, START_H*60, END_H*60-30), d:30, name:t.content,
+                  k: /【G】|^G /.test(t.content) ? "k" : "p"});
+      });
+      box.appendChild(b);
+    });
+    var re = document.createElement("button");
+    re.className = "chip"; re.textContent = "↻ 取り直す";
+    re.addEventListener("click", fetchTodoist);
+    box.appendChild(re);
+  })
+  .catch(function(e){
+    box.innerHTML = '<div class="chip">'+ (e.message||"取得できませんでした") +'</div>';
+    var again = document.createElement("button");
+    again.className="chip"; again.textContent="⚙ トークンを入れ直す";
+    again.addEventListener("click", function(){ localStorage.removeItem("todoistToken"); fetchTodoist(); });
+    document.getElementById("todoist").appendChild(again);
+  });
+}
+
+/* ============ 起動 ============ */
+drawGrid();
+setDate(dateKey(new Date()));
+setInterval(drawNow, 60000);
+// 現在時刻あたりまでスクロール
+(function(){
+  var n = new Date(), m = n.getHours()*60+n.getMinutes();
+  document.getElementById("scroll").scrollTop = Math.max(0, (m-START_H*60)*PPM - 160);
+})();
+</script>
+</body>
+</html>

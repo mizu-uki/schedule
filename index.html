@@ -47,6 +47,7 @@
   .tab.on{color:#fff}
   #tabM.on{background:var(--morning)}
   #tabS.on{background:var(--accent)}
+  #tabP.on{background:#8a63d2}
   #tabN.on{background:var(--night)}
   .panes{flex:1 1 auto;position:relative;min-height:0}
   iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
@@ -56,21 +57,25 @@
 <body>
 <div class="tabbar">
   <div class="tabs">
-    <div class="tab" id="tabM">🌅 明朝5–8</div>
-    <div class="tab" id="tabS">📅 今日の予定</div>
-    <div class="tab" id="tabN">🌙 前夜の準備</div>
+    <div class="tab" id="tabM">🌅 明朝</div>
+    <div class="tab" id="tabS">📅 今日</div>
+    <div class="tab" id="tabP">✏️ 組む</div>
+    <div class="tab" id="tabN">🌙 前夜</div>
   </div>
 </div>
 <div class="panes">
   <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
   <!-- src は日付付きでJSから設定（日をまたいだら必ず最新の today.html を取りに行くため） -->
   <iframe id="fS" title="今日の予定"></iframe>
+  <iframe id="fP" title="デイプランナー" src="plan.html"></iframe>
 </div>
 
 <script>
-  var fM = document.getElementById('fM'), fS = document.getElementById('fS');
+  var fM = document.getElementById('fM'), fS = document.getElementById('fS'),
+      fP = document.getElementById('fP');
   var BTN = { m: document.getElementById('tabM'),
               s: document.getElementById('tabS'),
+              p: document.getElementById('tabP'),
               n: document.getElementById('tabN') };
   var INNER = { m: 'morning', n: 'night' };   // morning-routine 側の data-t
   var KEY = 'shell-tab';
@@ -120,17 +125,17 @@
     return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
   }
 
-  // 毎回ユニークなクエリを付けて読み込む。
-  // GitHub Pages は max-age=600 を返すため、日付だけのクエリだと
-  // 「同じ日に予定を更新しても最大10分間 古い内容が出る」ことになる。
-  // 予定は1日に何度も直すので、開くたびに必ず最新を取りに行く方を優先する。
-  fS.src = 'today.html?t=' + Date.now();
 
   function show(which, remember){
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
-    var useMorning = (which !== 's');
+    var useMorning = (which === 'm' || which === 'n');
     fM.classList.toggle('on', useMorning);
-    fS.classList.toggle('on', !useMorning);
+    fS.classList.toggle('on', which === 's');
+    fP.classList.toggle('on', which === 'p');
+    if(which === 's'){
+      // プランナーで編集した内容を反映するため、開くたびに読み直す
+      fS.src = 'today.html?t=' + Date.now();
+    }
     if(useMorning){
       wanted = INNER[which];
       applyInner(wanted);          // 読み込み済みなら即反映。未了ならload時に反映
@@ -141,6 +146,7 @@
   }
   BTN.m.addEventListener('click', function(){ show('m', true); });
   BTN.s.addEventListener('click', function(){ show('s', true); });
+  BTN.p.addEventListener('click', function(){ show('p', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });
 
   // 初期表示: 同じ日に手動で選んだタブがあればそれを、なければ時刻で判断
