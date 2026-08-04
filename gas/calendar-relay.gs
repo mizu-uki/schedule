@@ -20,6 +20,10 @@
 
 const KEY = 'ここを自分で決めた合言葉に書き換える';
 
+// 取り込むカレンダー（このIDのものだけを見る）。
+// 空配列にすると、実行アカウントが持つ全カレンダーが対象になる。
+const TARGET_CALENDARS = ['dpd99m@gmail.com'];
+
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.key !== KEY) return json({ error: 'bad key' });
@@ -29,9 +33,11 @@ function doGet(e) {
   const from = new Date(base); from.setHours(0, 0, 0, 0);
   const to   = new Date(base); to.setHours(23, 59, 59, 999);
 
-  const cals = p.cal
-    ? String(p.cal).split(',').map(id => CalendarApp.getCalendarById(id.trim())).filter(Boolean)
+  const ids = p.cal ? String(p.cal).split(',') : TARGET_CALENDARS;
+  const cals = ids.length
+    ? ids.map(id => CalendarApp.getCalendarById(id.trim())).filter(Boolean)
     : CalendarApp.getAllOwnedCalendars();
+  if (!cals.length) return json({ error: 'calendar not found', tried: ids });
 
   const events = [];
   cals.forEach(cal => {
