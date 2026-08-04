@@ -518,6 +518,21 @@ function setDate(key){
    投入済みは項目名で覚えるので、
    ・消した枠は復活しない（消したのは本人の判断）
    ・あとから固定枠を増やしたときは、既に開いた日にもその新しい枠だけが入る  */
+function migrateFixed(key){
+  /* 固定枠の時刻を変えたとき、既に作ってしまった「これから来る日」の枠を追従させる。
+     一度入れた枠は seed 側では動かせない仕組みなので、ここだけ例外的に直す。
+     過ぎた日は実績なので触らない。 */
+  if(key < dateKey(new Date())) return;
+  var changed = 0;
+  blocks.forEach(function(b){
+    if(b.src) return;                                   // カレンダー由来には触らない
+    DAILY_FIXED.forEach(function(f){
+      if(b.name === f.name && (b.t !== f.t || b.d !== f.d)){ b.t = f.t; b.d = f.d; changed++; }
+    });
+  });
+  if(changed) localStorage.setItem(storeKey(key), JSON.stringify(blocks));
+}
+
 function seedDailyFixed(key){
   var mark = "planner-seeded:" + key, done = [];
   try{
