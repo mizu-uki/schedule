@@ -406,17 +406,26 @@ function setDate(key){
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
 }
 
-/* その日を初めて開いたときだけ固定枠を入れる */
+/* 固定枠は「その日にまだ一度も入れていない項目」だけ入れる。
+   投入済みは項目名で覚えるので、
+   ・消した枠は復活しない（消したのは本人の判断）
+   ・あとから固定枠を増やしたときは、既に開いた日にもその新しい枠だけが入る  */
 function seedDailyFixed(key){
-  var mark = "planner-seeded:" + key;
-  try{ if(localStorage.getItem(mark)) return; }catch(e){ return; }
+  var mark = "planner-seeded:" + key, done = [];
+  try{
+    var raw = localStorage.getItem(mark);
+    if(raw === "1") done = ["ランチ", "ディナー"];        // 旧形式（日単位フラグ）からの移行
+    else if(raw) done = JSON.parse(raw) || [];
+  }catch(e){ done = []; }
+
   var added = 0;
   DAILY_FIXED.forEach(function(f){
-    if(blocks.some(function(b){ return b.name === f.name; })) return;   // 既にあるなら二重に入れない
+    if(done.indexOf(f.name) !== -1) return;                            // 既に一度入れた項目
+    if(blocks.some(function(b){ return b.name === f.name; })) { done.push(f.name); return; }
     blocks.push({id:uid(), t:f.t, d:f.d, name:f.name, k:f.k, detail:""});
-    added++;
+    done.push(f.name); added++;
   });
-  try{ localStorage.setItem(mark, "1"); }catch(e){}
+  try{ localStorage.setItem(mark, JSON.stringify(done)); }catch(e){}
   if(added){ localStorage.setItem(storeKey(key), JSON.stringify(blocks)); }
 }
 dateEl.addEventListener("change", function(){ setDate(dateEl.value); });
@@ -621,7 +630,8 @@ function pullPlans(interactive){
          "この端末の同じ日付の内容は置き換わります。よろしいですか？")){ setStatus(""); return; }
       days.forEach(function(d){
         localStorage.setItem("planner:"+d, JSON.stringify(j.plans[d]));
-        localStorage.setItem("planner-seeded:"+d, "1");   // 読み込んだ日は固定枠を再投入しない
+        localStorage.setItem("planner-seeded:"+d,
+          JSON.stringify(DAILY_FIXED.map(function(f){ return f.name; })));  // 読み込んだ日は固定枠を再投入しない
       });
       if(curDate){ blocks = load(curDate); render(); }
       setStatus("読み込みました（"+days.length+"日分）");
