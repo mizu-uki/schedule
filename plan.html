@@ -72,6 +72,10 @@
   .blk[data-k=k]{background:rgba(79,140,255,.20);border-color:rgba(79,140,255,.55);color:#cfe0ff}
   .blk[data-k=p]{background:rgba(89,217,138,.18);border-color:rgba(89,217,138,.5);color:#cdf4dc}
   .blk[data-k=f]{background:rgba(201,162,39,.20);border-color:rgba(201,162,39,.55);color:#f4e4b4}
+  /* Googleカレンダー由来の予定はオレンジ。自分で置いたブロックと一目で区別する */
+  .blk[data-src=gcal]{background:rgba(176,84,34,.34);border-color:rgba(232,118,58,.55);
+    color:#f7d9c6;border-left:4px solid #e8763a}
+  .blk[data-src=gcal] .tag{background:rgba(232,118,58,.22);color:#f0b48c}
   .blk.drag{opacity:.85;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.5)}
   /* 伸縮ハンドルは「中央のバー」だけ。幅いっぱいにすると短いブロックで
      全面がハンドルになり、動かしたいのに伸びてしまうため、当たり判定を中央に限定する。 */
@@ -274,6 +278,7 @@ function drawBlocks(){
     var el = document.createElement("div");
     el.className = "blk" + (slim ? " slim" : "");
     el.dataset.k = b.k; el.dataset.id = b.id;
+    if(b.src) el.dataset.src = b.src;
     el.style.top = ((b.t - START_H*60) * PPM) + "px";
     el.style.height = h + "px";
     var range = slim ? hhmm(b.t) : (b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+' ・'+b.d+'分' : hhmm(b.t));
