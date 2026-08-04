@@ -37,6 +37,8 @@
   .btn.ghost{background:transparent;color:var(--sub)}
   .spacer{flex:1 1 auto}
   .status{color:var(--sub);font-size:11.5px;white-space:nowrap}
+  .dow{font-size:12.5px;font-weight:700;color:var(--sub);min-width:2.2em}
+  .dow.sat{color:#6fa8ff} .dow.sun{color:#ff8a8a} .dow.today{color:var(--text)}
 
   /* ---- 本体 ---- */
   .wrap{flex:1 1 auto;display:flex;min-height:0}
@@ -114,8 +116,10 @@
 
 <div class="bar">
   <input type="date" id="date">
+  <span class="dow" id="dow"></span>
   <button class="btn" id="prev">‹</button>
   <button class="btn" id="next">›</button>
+  <button class="btn" id="todayBtn">今日</button>
   <button class="btn" id="add">＋ ブロック</button>
   <button class="btn" id="undo" title="元に戻す（Cmd/Ctrl+Z）" disabled>↶ 戻す</button>
   <button class="btn" id="sideBtn">📋 タスク</button>
@@ -270,9 +274,38 @@ function drawGrid(){
   grid.innerHTML = html;
 }
 
+
+/* 時間が重なるブロックを列に振り分ける。
+   同じ幅で重ねて描くと下のブロックが完全に隠れてしまうため（実際にディナーが飲み会の下に隠れた）。 */
+function layoutColumns(sorted){
+  sorted.forEach(function(b){ b._col = 0; b._cols = 1; });
+  var cluster = [], clusterEnd = -1;
+  function flush(){
+    if(!cluster.length) return;
+    var colEnds = [];
+    cluster.forEach(function(b){
+      var end = b.t + Math.max(b.d, 5), placed = false;
+      for(var i = 0; i < colEnds.length; i++){
+        if(b.t >= colEnds[i]){ colEnds[i] = end; b._col = i; placed = true; break; }
+      }
+      if(!placed){ b._col = colEnds.length; colEnds.push(end); }
+    });
+    cluster.forEach(function(b){ b._cols = colEnds.length; });
+    cluster = []; clusterEnd = -1;
+  }
+  sorted.forEach(function(b){
+    if(cluster.length && b.t >= clusterEnd) flush();
+    cluster.push(b);
+    clusterEnd = Math.max(clusterEnd, b.t + Math.max(b.d, 5));
+  });
+  flush();
+}
+
 function drawBlocks(){
   Array.prototype.forEach.call(grid.querySelectorAll(".blk"), function(el){ el.remove(); });
-  blocks.slice().sort(function(a,b){ return a.t-b.t; }).forEach(function(b){
+  var sorted = blocks.slice().sort(function(a,b){ return a.t-b.t || a.d-b.d; });
+  layoutColumns(sorted);            // 時間が重なるブロックは左右に分けて、隠れないようにする
+  sorted.forEach(function(b){
     var h = Math.max(b.d * PPM, 20);
     var slim = h < 40;                       // 2行に収まらない高さなら1行表示
     var el = document.createElement("div");
@@ -281,6 +314,11 @@ function drawBlocks(){
     if(b.src) el.dataset.src = b.src;
     el.style.top = ((b.t - START_H*60) * PPM) + "px";
     el.style.height = h + "px";
+    if(b._cols > 1){                                  // 重なっている分だけ横幅を分け合う
+      el.style.left  = (b._col * 100 / b._cols) + "%";
+      el.style.width = "calc(" + (100 / b._cols) + "% - 3px)";
+      el.style.right = "auto";
+    }
     var range = slim ? hhmm(b.t) : (b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+' ・'+b.d+'分' : hhmm(b.t));
     el.innerHTML = '<div class="t"></div><div class="n"></div>' +
                    '<div class="grip"></div>';   // 当たり判定は中央のバーだけ（CSS側で限定）
@@ -431,6 +469,14 @@ mask.addEventListener("click", function(e){ if(e.target===mask) closeEditor(); }
 var dateEl = document.getElementById("date");
 function setDate(key){
   curDate = key; dateEl.value = key;
+  (function(){
+    var dd = new Date(key + "T00:00:00");
+    var w = ["日","月","火","水","木","金","土"][dd.getDay()];
+    var el = document.getElementById("dow");
+    el.textContent = "（" + w + "）";
+    el.className = "dow" + (dd.getDay()===0 ? " sun" : dd.getDay()===6 ? " sat" : "") +
+                   (key === dateKey(new Date()) ? " today" : "");
+  })();
   undoStack = []; 
   var ub = document.getElementById("undo"); if(ub) ub.disabled = true;
   blocks = load(key);
@@ -466,6 +512,7 @@ dateEl.addEventListener("change", function(){ setDate(dateEl.value); });
 function shiftDate(n){
   var d = new Date(curDate+"T00:00:00"); d.setDate(d.getDate()+n); setDate(dateKey(d));
 }
+document.getElementById("todayBtn").addEventListener("click", function(){ setDate(dateKey(new Date())); });
 document.getElementById("undo").addEventListener("click", undo);
 document.addEventListener("keydown", function(e){
   if((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")){ e.preventDefault(); undo(); }
