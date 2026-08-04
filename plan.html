@@ -352,8 +352,15 @@ function firstFreeSlot(dur){
   var d = Math.max(dur || 30, 5);
   var sorted = blocks.slice().sort(function(a,b){ return a.t-b.t; });
   var from;
-  if(sorted.length) from = sorted[0].t + sorted[0].d;      // 最初のブロック（朝の枠）の直後から探す
-  else{ var n = new Date(); from = snap(n.getHours()*60 + n.getMinutes()); }
+  if(curDate === dateKey(new Date())){
+    // 今日を編集しているときは「今より後」に置く。過ぎた時間帯に積んでも意味がないため。
+    var n = new Date();
+    from = snap(n.getHours()*60 + n.getMinutes());
+  }else if(sorted.length){
+    from = sorted[0].t + sorted[0].d;                      // 別の日なら最初のブロック（朝の枠）の直後から
+  }else{
+    from = START_H*60;
+  }
   from = clamp(from, START_H*60, END_H*60 - d);
   for(var t = from; t <= END_H*60 - d; t += SNAP){
     var hit = sorted.some(function(b){ return t < b.t + b.d && b.t < t + d; });
