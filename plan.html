@@ -73,11 +73,13 @@
   .blk[data-k=p]{background:rgba(89,217,138,.18);border-color:rgba(89,217,138,.5);color:#cdf4dc}
   .blk[data-k=f]{background:rgba(201,162,39,.20);border-color:rgba(201,162,39,.55);color:#f4e4b4}
   .blk.drag{opacity:.85;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.5)}
-  /* 伸縮ハンドルは十分な高さのブロックにだけ出す。
-     短いブロックだと全面がハンドルになり「動かしたいのに伸びる」事故が起きるため。 */
-  .grip{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;touch-action:none}
-  .grip::after{content:"";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
-    width:26px;height:2px;border-radius:2px;background:currentColor;opacity:.45}
+  /* 伸縮ハンドルは「中央のバー」だけ。幅いっぱいにすると短いブロックで
+     全面がハンドルになり、動かしたいのに伸びてしまうため、当たり判定を中央に限定する。 */
+  .grip{position:absolute;left:50%;transform:translateX(-50%);bottom:0;
+    width:44px;height:11px;cursor:ns-resize;touch-action:none;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
+  .grip::after{content:"";width:26px;height:2.5px;border-radius:2px;background:currentColor;opacity:.5}
+  .blk:hover .grip::after{opacity:.85}
 
   /* ---- 編集ダイアログ ---- */
   .mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:20;
@@ -261,7 +263,7 @@ function drawBlocks(){
     el.style.height = h + "px";
     var range = slim ? hhmm(b.t) : (b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+' ・'+b.d+'分' : hhmm(b.t));
     el.innerHTML = '<div class="t"></div><div class="n"></div>' +
-                   (h >= 34 ? '<div class="grip"></div>' : '');   // 低いブロックには伸縮ハンドルを出さない
+                   '<div class="grip"></div>';   // 当たり判定は中央のバーだけ（CSS側で限定）
     el.querySelector(".t").textContent = range;
     el.querySelector(".n").textContent = b.name;
     el.title = (b.d ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+" ("+b.d+"分) " : hhmm(b.t)+" ") + b.name;
