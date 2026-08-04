@@ -135,6 +135,7 @@
   <button class="btn ghost" id="pull" title="GitHubに保存された内容を読み込む">☁ 読込</button>
   <span class="spacer"></span>
   <span class="status" id="status">—</span>
+  <button class="btn ghost" id="cfgBtn" title="連携の設定">⚙</button>
   <button class="btn ghost" id="clear">全消去</button>
 </div>
 
@@ -152,6 +153,35 @@
   <div class="scroll" id="scroll">
     <div class="page">
       <div class="grid" id="grid"></div>
+    </div>
+  </div>
+</div>
+
+
+<div class="mask" id="cfgMask">
+  <div class="dlg">
+    <h2>連携の設定</h2>
+    <p style="margin:-4px 0 10px;font-size:11px;color:var(--sub);line-height:1.5">
+      入力内容はこの端末のブラウザにだけ保存され、リポジトリには入りません。</p>
+    <div class="row">
+      <label>Googleカレンダー中継URL（Apps Script の …/exec）</label>
+      <input id="cfgUrl" placeholder="https://script.google.com/macros/s/…/exec">
+    </div>
+    <div class="row">
+      <label>合言葉（Apps Script の KEY）</label>
+      <input id="cfgKey" placeholder="ueda-plan-…">
+    </div>
+    <div class="row">
+      <label>Todoist APIトークン</label>
+      <input id="cfgTd" placeholder="未設定">
+    </div>
+    <div class="row">
+      <label>GitHubトークン（クラウド保存用）</label>
+      <input id="cfgGh" placeholder="未設定">
+    </div>
+    <div class="acts">
+      <button class="btn" id="cfgCancel">閉じる</button>
+      <button class="btn primary" id="cfgSave">保存</button>
     </div>
   </div>
 </div>
@@ -632,27 +662,17 @@ document.getElementById("sideBtn").addEventListener("click", function(){ side.cl
 
 /* Googleカレンダー取り込み（GAS中継経由・読み取り専用）
    予定は「実際の時刻そのまま」で置く。他人が絡む予定なのでこちらから動かさない前提。 */
-document.getElementById("gcSetup").addEventListener("click", function(){ fetchGCal(true); });
+document.getElementById("gcSetup").addEventListener("click", openConfig);
 
-function gcalConf(reset){
-  if(reset){ localStorage.removeItem("gcalUrl"); localStorage.removeItem("gcalKey"); }
+function gcalConf(){
   var url = localStorage.getItem("gcalUrl"), key = localStorage.getItem("gcalKey");
-  if(!url){
-    url = prompt("Apps Script のウェブアプリURL（…/exec）を貼り付けてください");
-    if(!url) return null;
-    localStorage.setItem("gcalUrl", url.trim());
-  }
-  if(!key){
-    key = prompt("Apps Script に書いた合言葉（KEY）を入力してください");
-    if(!key) return null;
-    localStorage.setItem("gcalKey", key.trim());
-  }
-  return {url:localStorage.getItem("gcalUrl"), key:localStorage.getItem("gcalKey")};
+  if(!url || !key){ openConfig(); return null; }     // 未設定なら設定画面を開く
+  return {url:url, key:key};
 }
 
 function fetchGCal(interactive){
   var box = document.getElementById("gcal");
-  var c = gcalConf(false);
+  var c = gcalConf();
   if(!c){ return; }
   var reqDate = curDate;            // この取得がどの日のものかを覚えておく
   box.innerHTML = '<div class="chip">取得中…</div>';
@@ -694,14 +714,14 @@ function fetchGCal(interactive){
       box.appendChild(re);
       var cfg = document.createElement("button");
       cfg.className = "chip"; cfg.textContent = "⚙ 設定し直す";
-      cfg.addEventListener("click", function(){ gcalConf(true); fetchGCal(true); });
+      cfg.addEventListener("click", openConfig);
       box.appendChild(cfg);
     })
     .catch(function(e){
       box.innerHTML = '<div class="chip">'+(e.message||"取得できませんでした")+'</div>';
       var again = document.createElement("button");
       again.className="chip"; again.textContent="⚙ 設定し直す";
-      again.addEventListener("click", function(){ gcalConf(true); fetchGCal(true); });
+      again.addEventListener("click", openConfig);
       box.appendChild(again);
     });
 }
@@ -761,11 +781,7 @@ function autoImportGCal(events, forDate){
 document.getElementById("tdSetup").addEventListener("click", fetchTodoist);
 function fetchTodoist(){
   var tk = localStorage.getItem("todoistToken");
-  if(!tk){
-    tk = prompt("Todoist API トークンを貼り付けてください。\n（この端末のブラウザ内だけに保存され、外部には送りません）");
-    if(!tk) return;
-    localStorage.setItem("todoistToken", tk.trim());
-  }
+  if(!tk){ openConfig(); return; }
   var box = document.getElementById("todoist");
   box.innerHTML = '<div class="chip">取得中…</div>';
   fetch("https://api.todoist.com/api/v1/tasks?limit=200", {headers:{Authorization:"Bearer "+tk.trim()}})
@@ -827,14 +843,9 @@ function allPlans(){
 function b64(str){                       // UTF-8 を安全にbase64化
   return btoa(String.fromCharCode.apply(null, new TextEncoder().encode(str)));
 }
-function ghToken(force){
-  var t = force ? null : localStorage.getItem("ghToken");
-  if(!t){
-    t = prompt("GitHub のトークン（Contents 書き込み可）を貼り付けてください。\n"+
-               "この端末にだけ保存され、リポジトリには入りません。");
-    if(!t) return null;
-    localStorage.setItem("ghToken", t.trim());
-  }
+function ghToken(){
+  var t = localStorage.getItem("ghToken");
+  if(!t){ openConfig(); return null; }
   return t.trim();
 }
 
@@ -904,6 +915,30 @@ function pullPlans(interactive){
     })
     .catch(function(e){ setStatus(e.message || "読み込めませんでした"); });
 }
+
+
+/* ---- 連携の設定（iframe内では prompt が使えないので自前のダイアログ） ---- */
+var cfgMask = document.getElementById("cfgMask");
+function openConfig(){
+  document.getElementById("cfgUrl").value = localStorage.getItem("gcalUrl") || "";
+  document.getElementById("cfgKey").value = localStorage.getItem("gcalKey") || "";
+  document.getElementById("cfgTd").value  = localStorage.getItem("todoistToken") || "";
+  document.getElementById("cfgGh").value  = localStorage.getItem("ghToken") || "";
+  cfgMask.classList.add("on");
+}
+function setOrClear(k, v){ v = (v||"").trim(); if(v) localStorage.setItem(k, v); else localStorage.removeItem(k); }
+document.getElementById("cfgBtn").addEventListener("click", openConfig);
+document.getElementById("cfgCancel").addEventListener("click", function(){ cfgMask.classList.remove("on"); });
+cfgMask.addEventListener("click", function(e){ if(e.target === cfgMask) cfgMask.classList.remove("on"); });
+document.getElementById("cfgSave").addEventListener("click", function(){
+  setOrClear("gcalUrl", document.getElementById("cfgUrl").value);
+  setOrClear("gcalKey", document.getElementById("cfgKey").value);
+  setOrClear("todoistToken", document.getElementById("cfgTd").value);
+  setOrClear("ghToken", document.getElementById("cfgGh").value);
+  cfgMask.classList.remove("on");
+  setStatus("設定を保存しました");
+  if(localStorage.getItem("gcalUrl")) fetchGCal(false);
+});
 
 /* ============ 起動 ============ */
 drawGrid();
