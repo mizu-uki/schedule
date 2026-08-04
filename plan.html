@@ -128,6 +128,9 @@
   <aside class="side" id="side">
     <h3>テンプレート（タップで追加）</h3>
     <div id="tpl"></div>
+    <h3 style="margin-top:12px">GOOGLEカレンダー（当日）</h3>
+    <div id="gcal"><button class="chip" id="gcSetup">⚙ 連携URLを設定して取得</button></div>
+
     <h3 style="margin-top:12px">TODOIST（当日）</h3>
     <div id="todoist"><button class="chip" id="tdSetup">⚙ トークンを設定して取得</button></div>
   </aside>
@@ -427,6 +430,7 @@ function setDate(key){
   var ub = document.getElementById("undo"); if(ub) ub.disabled = true;
   blocks = load(key);
   seedDailyFixed(key);
+  if(localStorage.getItem("gcalUrl")) fetchGCal(false);   // 設定済みなら日付に合わせて取り直す
   render();
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
 }
@@ -530,6 +534,77 @@ document.getElementById("sideBtn").addEventListener("click", function(){ side.cl
     box.appendChild(b);
   });
 })();
+
+/* Googleカレンダー取り込み（GAS中継経由・読み取り専用）
+   予定は「実際の時刻そのまま」で置く。他人が絡む予定なのでこちらから動かさない前提。 */
+document.getElementById("gcSetup").addEventListener("click", function(){ fetchGCal(true); });
+
+function gcalConf(reset){
+  if(reset){ localStorage.removeItem("gcalUrl"); localStorage.removeItem("gcalKey"); }
+  var url = localStorage.getItem("gcalUrl"), key = localStorage.getItem("gcalKey");
+  if(!url){
+    url = prompt("Apps Script のウェブアプリURL（…/exec）を貼り付けてください");
+    if(!url) return null;
+    localStorage.setItem("gcalUrl", url.trim());
+  }
+  if(!key){
+    key = prompt("Apps Script に書いた合言葉（KEY）を入力してください");
+    if(!key) return null;
+    localStorage.setItem("gcalKey", key.trim());
+  }
+  return {url:localStorage.getItem("gcalUrl"), key:localStorage.getItem("gcalKey")};
+}
+
+function fetchGCal(interactive){
+  var box = document.getElementById("gcal");
+  var c = gcalConf(false);
+  if(!c){ return; }
+  box.innerHTML = '<div class="chip">取得中…</div>';
+  var u = c.url + (c.url.indexOf("?")>=0 ? "&" : "?") +
+          "key=" + encodeURIComponent(c.key) + "&date=" + curDate + "&t=" + Date.now();
+  fetch(u, {cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("取得失敗 "+r.status); return r.json(); })
+    .then(function(j){
+      if(j.error) throw new Error("合言葉が違うようです");
+      box.innerHTML = "";
+      if(!j.events || !j.events.length){
+        box.innerHTML = '<div class="chip">この日の予定はありません</div>';
+      }
+      (j.events||[]).forEach(function(ev){
+        var b = document.createElement("button");
+        b.className = "chip";
+        b.innerHTML = "<span></span>" + (ev.allDay ? "<br><small>終日</small>"
+                     : "<br><small>"+ev.start+"–"+ev.end+"</small>");
+        b.querySelector("span").textContent = ev.title;
+        b.addEventListener("click", function(){
+          if(ev.allDay){
+            addBlock({t:firstFreeSlot(30), d:0, name:ev.title, k:"f"});
+          }else{
+            var t = toMin(ev.start), e2 = toMin(ev.end);
+            var d = Math.max(e2 - t, 0); if(d < 0) d += 24*60;
+            addBlock({t:clamp(t, START_H*60, END_H*60), d:d, name:ev.title, k:"f"});
+          }
+          setStatus("追加：" + ev.title);
+        });
+        box.appendChild(b);
+      });
+      var re = document.createElement("button");
+      re.className = "chip"; re.textContent = "↻ 取り直す";
+      re.addEventListener("click", function(){ fetchGCal(false); });
+      box.appendChild(re);
+      var cfg = document.createElement("button");
+      cfg.className = "chip"; cfg.textContent = "⚙ 設定し直す";
+      cfg.addEventListener("click", function(){ gcalConf(true); fetchGCal(true); });
+      box.appendChild(cfg);
+    })
+    .catch(function(e){
+      box.innerHTML = '<div class="chip">'+(e.message||"取得できませんでした")+'</div>';
+      var again = document.createElement("button");
+      again.className="chip"; again.textContent="⚙ 設定し直す";
+      again.addEventListener("click", function(){ gcalConf(true); fetchGCal(true); });
+      box.appendChild(again);
+    });
+}
 
 /* Todoist 取り込み（トークンは端末内のみに保存し、外へは出さない） */
 document.getElementById("tdSetup").addEventListener("click", fetchTodoist);
