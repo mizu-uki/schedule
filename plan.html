@@ -345,6 +345,23 @@ grid.addEventListener("click", function(e){
   addBlock({t: clamp(m, START_H*60, END_H*60-30), d:30, name:"", k:"p"}, true);
 });
 
+
+/* 新しいブロックを置く位置＝「重ならない一番早い空き」。
+   末尾に足していくと前夜タスク(22:00)の後ろに積まれて使いにくいため、上から詰める。 */
+function firstFreeSlot(dur){
+  var d = Math.max(dur || 30, 5);
+  var sorted = blocks.slice().sort(function(a,b){ return a.t-b.t; });
+  var from;
+  if(sorted.length) from = sorted[0].t + sorted[0].d;      // 最初のブロック（朝の枠）の直後から探す
+  else{ var n = new Date(); from = snap(n.getHours()*60 + n.getMinutes()); }
+  from = clamp(from, START_H*60, END_H*60 - d);
+  for(var t = from; t <= END_H*60 - d; t += SNAP){
+    var hit = sorted.some(function(b){ return t < b.t + b.d && b.t < t + d; });
+    if(!hit) return t;
+  }
+  return clamp(from, START_H*60, END_H*60 - d);            // 空きが無ければ元の位置
+}
+
 /* ============ 追加・編集 ============ */
 function addBlock(b, edit){
   pushHistory();
@@ -441,8 +458,7 @@ document.getElementById("prev").addEventListener("click", function(){ shiftDate(
 document.getElementById("next").addEventListener("click", function(){ shiftDate(1); });
 
 document.getElementById("add").addEventListener("click", function(){
-  var n = new Date(), m = snap(n.getHours()*60+n.getMinutes());
-  addBlock({t:clamp(m, START_H*60, END_H*60-30), d:30, name:"", k:"p"}, true);
+  addBlock({t:firstFreeSlot(30), d:30, name:"", k:"p"}, true);
 });
 document.getElementById("clear").addEventListener("click", function(){
   if(!blocks.length) return;
@@ -501,9 +517,7 @@ document.getElementById("sideBtn").addEventListener("click", function(){ side.cl
     b.querySelector("span").textContent = t.name;
     b.addEventListener("click", function(){
       // 最後のブロックの直後に置く（無ければ現在時刻）
-      var end = blocks.length ? Math.max.apply(null, blocks.map(function(x){return x.t+x.d;})) : null;
-      if(end === null){ var n=new Date(); end = snap(n.getHours()*60+n.getMinutes()); }
-      addBlock({t:clamp(end, START_H*60, END_H*60-t.d), d:t.d, name:t.name, k:t.k});
+      addBlock({t:firstFreeSlot(t.d), d:t.d, name:t.name, k:t.k});
       setStatus("追加：" + t.name);
     });
     box.appendChild(b);
@@ -540,9 +554,7 @@ function fetchTodoist(){
       b.className = "chip";
       b.textContent = t.content;
       b.addEventListener("click", function(){
-        var end = blocks.length ? Math.max.apply(null, blocks.map(function(x){return x.t+x.d;}))
-                                : snap(new Date().getHours()*60+new Date().getMinutes());
-        addBlock({t:clamp(end, START_H*60, END_H*60-30), d:30, name:t.content,
+        addBlock({t:firstFreeSlot(30), d:30, name:t.content,
                   k: /【G】|^G /.test(t.content) ? "k" : "p"});
       });
       box.appendChild(b);
