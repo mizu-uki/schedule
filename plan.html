@@ -734,8 +734,10 @@ function fetchGCal(interactive){
 function autoImportGCal(events, forDate){
   if(forDate && forDate !== curDate) return;          // 念のため二重チェック
   events = events || [];
-  var mark = "planner-gcal:" + curDate, seen = [];
-  try{ seen = JSON.parse(localStorage.getItem(mark) || "[]") || []; }catch(e){ seen = []; }
+  /* かつては「一度入れて消した予定は戻さない」記録を持っていたが、
+     カレンダーを正とする同期にした今は、それが原因で
+     カレンダーにある予定が二度と入らなくなる（実際に土曜の歯科が入らなかった）。
+     不要な予定はカレンダー側で消す／辞退する、という運用に統一する。 */
 
   // カレンダーから消えた（別の日に移った）予定は、こちらからも取り下げる。
   // カレンダーが正。手で置いたブロック（src なし）には触らない。
@@ -750,7 +752,6 @@ function autoImportGCal(events, forDate){
   var added = 0, moved = 0;
   events.forEach(function(ev){
     if(ev.allDay) return;                                  // 終日予定は時間を取らないので自動では入れない
-    var sig = ev.title + "|" + ev.start + "-" + ev.end;
     var t = toMin(ev.start), d = toMin(ev.end) - t;
     if(d < 0) d += 24*60;
 
@@ -758,15 +759,12 @@ function autoImportGCal(events, forDate){
     if(same){                                              // 既にある → 時刻がずれていれば追従
       if(same.t !== t || same.d !== d){ same.t = t; same.d = d; moved++; }
     }else{
-      if(seen.indexOf(sig) !== -1) return;                 // 一度入れて消したものは戻さない
       blocks.push({id:uid(), t:clamp(t, 0, END_H*60), d:d,
                    name:ev.title, k:"f", detail:"", src:"gcal"});
       added++;
     }
-    if(seen.indexOf(sig) === -1) seen.push(sig);
   });
 
-  try{ localStorage.setItem(mark, JSON.stringify(seen)); }catch(e){}
   if(added || moved || removed){
     save(); render();
     var msg = [];
@@ -907,6 +905,7 @@ function pullPlans(interactive){
          "この端末の同じ日付の内容は置き換わります。よろしいですか？")){ setStatus(""); return; }
       days.forEach(function(d){
         localStorage.setItem("planner:"+d, JSON.stringify(j.plans[d]));
+        localStorage.removeItem("planner-gcal:"+d);
         localStorage.setItem("planner-seeded:"+d,
           JSON.stringify(DAILY_FIXED.map(function(f){ return f.name; })));  // 読み込んだ日は固定枠を再投入しない
       });
@@ -956,6 +955,7 @@ drawGrid();
       if(j.updated <= seen) return;                       // 既に取り込み済み
       Object.keys(j.plans || {}).forEach(function(d){
         localStorage.setItem("planner:"+d, JSON.stringify(j.plans[d]));
+        localStorage.removeItem("planner-gcal:"+d);
         localStorage.setItem("planner-seeded:"+d,
           JSON.stringify(DAILY_FIXED.map(function(f){ return f.name; })));
       });
