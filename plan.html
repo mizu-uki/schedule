@@ -183,6 +183,13 @@ var SNAP = 5;                                 // 5分刻み
 var blocks = [];                              // {id,t,d,name,k,detail}
 var curDate = null, editingId = null;
 
+/* 毎日その日を開いたときに自動で入る固定枠。
+   一度入れた日は「投入済み」の印を付け、消しても復活させない（消したのは本人の判断なので）。 */
+var DAILY_FIXED = [
+  {t:12*60, d:60, name:"ランチ",   k:"f"},
+  {t:19*60, d:30, name:"ディナー", k:"f"}
+];
+
 var TEMPLATES = [
   {name:"【G】倉庫対応", d:90, k:"k"},
   {name:"【G】出荷処理", d:30, k:"k"},
@@ -390,8 +397,23 @@ function setDate(key){
   undoStack = []; 
   var ub = document.getElementById("undo"); if(ub) ub.disabled = true;
   blocks = load(key);
+  seedDailyFixed(key);
   render();
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
+}
+
+/* その日を初めて開いたときだけ固定枠を入れる */
+function seedDailyFixed(key){
+  var mark = "planner-seeded:" + key;
+  try{ if(localStorage.getItem(mark)) return; }catch(e){ return; }
+  var added = 0;
+  DAILY_FIXED.forEach(function(f){
+    if(blocks.some(function(b){ return b.name === f.name; })) return;   // 既にあるなら二重に入れない
+    blocks.push({id:uid(), t:f.t, d:f.d, name:f.name, k:f.k, detail:""});
+    added++;
+  });
+  try{ localStorage.setItem(mark, "1"); }catch(e){}
+  if(added){ localStorage.setItem(storeKey(key), JSON.stringify(blocks)); }
 }
 dateEl.addEventListener("change", function(){ setDate(dateEl.value); });
 function shiftDate(n){
