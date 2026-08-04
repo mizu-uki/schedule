@@ -103,10 +103,18 @@
 
   // 自分で組んだプラン（デイプランナー）があれば、それを優先して表示する
   (function(){
-    var day = KEY.replace("sched-","").slice(0,10);
-    var plan;
-    try{ plan = JSON.parse(localStorage.getItem("planner:"+day)||"null"); }catch(e){ plan = null; }
-    if(!plan || !plan.length) return;                 // 無ければ配信されたそのままを使う
+    function pad2(n){ return (n<10?"0":"")+n; }
+    var now = new Date();
+    var realDay = now.getFullYear()+"-"+pad2(now.getMonth()+1)+"-"+pad2(now.getDate());
+    var fileDay = KEY.replace("sched-","").slice(0,10);
+    function pick(d){
+      try{ var v = JSON.parse(localStorage.getItem("planner:"+d)||"null");
+           return (v && v.length) ? v : null; }catch(e){ return null; }
+    }
+    // 実際の「今日」に自分で組んだプランがあればそれを最優先。
+    // 無ければ、この配信ファイルの日付のプラン → それも無ければ配信された内容そのまま。
+    var plan = pick(realDay) || pick(fileDay);
+    if(!plan) return;
     function pad(n){ return (n<10?"0":"")+n; }
     function hhmm(m){ return pad(Math.floor(m/60)%24)+":"+pad(m%60); }
     var label = {k:"業務", p:"個人", f:"固定"};
