@@ -375,7 +375,7 @@ function firstFreeSlot(dur){
 /* ============ 追加・編集 ============ */
 function addBlock(b, edit){
   pushHistory();
-  var nb = {id:uid(), t:b.t, d:b.d, name:b.name||"", k:b.k||"p", detail:b.detail||""};
+  var nb = {id:uid(), t:b.t, d:b.d, name:b.name||"", k:b.k||"p", detail:b.detail||"", src:b.src||""};
   blocks.push(nb); save(); render();
   if(edit) openEditor(nb.id);
   return nb;
@@ -588,6 +588,7 @@ function fetchGCal(interactive){
         });
         box.appendChild(b);
       });
+      autoImportGCal(j.events);                 // 取得できたらそのままタイムラインへ
       var re = document.createElement("button");
       re.className = "chip"; re.textContent = "↻ 取り直す";
       re.addEventListener("click", function(){ fetchGCal(false); });
@@ -604,6 +605,43 @@ function fetchGCal(interactive){
       again.addEventListener("click", function(){ gcalConf(true); fetchGCal(true); });
       box.appendChild(again);
     });
+}
+
+
+/* カレンダーの予定を自動でタイムラインに置く。
+   ・一度取り込んだ予定は記録しておくので、消しても復活しない
+   ・カレンダー側で時刻が変わった予定は、同じ名前のブロックを動かして追従する
+   ・手で足したブロックには触らない（src が "gcal" のものだけ扱う） */
+function autoImportGCal(events){
+  if(!events || !events.length) return;
+  var mark = "planner-gcal:" + curDate, seen = [];
+  try{ seen = JSON.parse(localStorage.getItem(mark) || "[]") || []; }catch(e){ seen = []; }
+
+  var added = 0, moved = 0;
+  events.forEach(function(ev){
+    if(ev.allDay) return;                                  // 終日予定は時間を取らないので自動では入れない
+    var sig = ev.title + "|" + ev.start + "-" + ev.end;
+    var t = toMin(ev.start), d = toMin(ev.end) - t;
+    if(d < 0) d += 24*60;
+
+    var same = blocks.filter(function(b){ return b.src === "gcal" && b.name === ev.title; })[0];
+    if(same){                                              // 既にある → 時刻がずれていれば追従
+      if(same.t !== t || same.d !== d){ same.t = t; same.d = d; moved++; }
+    }else{
+      if(seen.indexOf(sig) !== -1) return;                 // 一度入れて消したものは戻さない
+      blocks.push({id:uid(), t:clamp(t, 0, END_H*60), d:d,
+                   name:ev.title, k:"f", detail:"", src:"gcal"});
+      added++;
+    }
+    if(seen.indexOf(sig) === -1) seen.push(sig);
+  });
+
+  try{ localStorage.setItem(mark, JSON.stringify(seen)); }catch(e){}
+  if(added || moved){
+    save(); render();
+    setStatus("カレンダーから" + (added ? added+"件追加" : "") + (added&&moved ? "・" : "") +
+              (moved ? moved+"件更新" : ""));
+  }
 }
 
 /* Todoist 取り込み（トークンは端末内のみに保存し、外へは出さない） */
