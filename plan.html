@@ -942,7 +942,9 @@ document.getElementById("cfgSave").addEventListener("click", function(){
 /* ============ 起動 ============ */
 drawGrid();
 (function(){
-  var t = dateKey(new Date());
+  // 外部リンクから日付を指定されたらその日を開く（前夜タブの「明日を組む」用）
+  var q = new URLSearchParams(location.search).get("date");
+  var t = (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) ? q : dateKey(new Date());
   setDate(t);
   // クラウドに自分より新しい版があれば静かに取り込む。
   // （スマホ側にも固定枠が自動で入るため「データが無いときだけ」では永久に取り込めない。

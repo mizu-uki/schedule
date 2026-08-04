@@ -74,7 +74,17 @@
 <script>
   var fM = document.getElementById('fM'), fS = document.getElementById('fS'),
       fP = document.getElementById('fP');
-  fP.src = 'plan.html?t=' + Date.now();   // 10分キャッシュで古い版が動くのを防ぐ
+  // 外部から ?tab=p&day=next で呼ばれたら、プランナーを翌日で開く
+  var Q = new URLSearchParams(location.search);
+  var planQ = 'plan.html?t=' + Date.now();
+  if(Q.get('day') === 'next'){
+    var nx = new Date(); nx.setDate(nx.getDate() + 1);
+    var p2 = function(n){ return (n<10?'0':'')+n; };
+    planQ += '&date=' + nx.getFullYear() + '-' + p2(nx.getMonth()+1) + '-' + p2(nx.getDate());
+  }else if(Q.get('date')){
+    planQ += '&date=' + encodeURIComponent(Q.get('date'));
+  }
+  fP.src = planQ;                          // 10分キャッシュで古い版が動くのを防ぐ
   var BTN = { m: document.getElementById('tabM'),
               s: document.getElementById('tabS'),
               p: document.getElementById('tabP'),
@@ -159,6 +169,8 @@
       var s = JSON.parse(localStorage.getItem(KEY) || 'null');
       if(s && s.d === today() && BTN[s.t]) pick = s.t;
     }catch(e){}
+    var forced = Q.get('tab');             // 外部リンクからの指定が最優先
+    if(forced && BTN[forced]) pick = forced;
     if(!pick){
       var h = new Date().getHours();
       pick = (h >= 4 && h < 12) ? 'm' : (h >= 20 || h < 4) ? 'n' : 's';
