@@ -244,6 +244,7 @@ function save(){
   try{
     localStorage.setItem(storeKey(curDate), JSON.stringify(blocks));
     setStatus("保存済み "+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}));
+    schedulePush();
   }catch(e){ setStatus("保存に失敗しました"); }
 }
 function setStatus(t){ document.getElementById("status").textContent = t; }
@@ -592,10 +593,13 @@ function ghToken(force){
   return t.trim();
 }
 
-document.getElementById("push").addEventListener("click", function(){
-  var tk = ghToken(); if(!tk) return;
-  var payload = JSON.stringify({updated:new Date().toISOString(), plans:allPlans()}, null, 1);
-  setStatus("保存中…");
+function pushPlans(silent){
+  var tk = silent ? localStorage.getItem("ghToken") : ghToken();
+  if(!tk){ return Promise.resolve(); }        // トークン未設定の端末（スマホ等）では自動保存しない
+  tk = tk.trim();
+  var stamp = new Date().toISOString();
+  var payload = JSON.stringify({updated:stamp, plans:allPlans()}, null, 1);
+  setStatus(silent ? "自動保存中…" : "保存中…");
   var api = "https://api.github.com/repos/"+REPO+"/contents/"+FILE;
   var head = {Authorization:"Bearer "+tk, Accept:"application/vnd.github+json"};
   // 既存ファイルの sha を取得（無ければ新規作成）
@@ -612,9 +616,26 @@ document.getElementById("push").addEventListener("click", function(){
       if(r.status === 401 || r.status === 403){ localStorage.removeItem("ghToken");
         throw new Error("トークンが無効です。もう一度押して入れ直してください"); }
       if(!r.ok) throw new Error("保存できませんでした ("+r.status+")");
-      setStatus("GitHubに保存しました "+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}));
+      // 自分が上げた版を「取得済み」として記録しておく（次回起動で自分のデータを取り直さないため）
+      try{ localStorage.setItem("planner-synced", stamp); }catch(e){}
+      setStatus("クラウド保存済み "+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}));
     })
     .catch(function(e){ setStatus(e.message || "保存に失敗しました"); });
+}
+document.getElementById("push").addEventListener("click", function(){ pushPlans(false); });
+
+/* 変更のたびに少し待ってから自動でクラウド保存する（連続操作でAPIを叩きすぎないように） */
+var pushTimer = null;
+function schedulePush(){
+  if(!localStorage.getItem("ghToken")) return;      // トークンのある端末だけ
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(function(){ pushPlans(true); }, 6000);
+}
+/* 画面を離れるときは待たずに保存 */
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "hidden" && pushTimer){
+    clearTimeout(pushTimer); pushTimer = null; pushPlans(true);
+  }
 });
 
 document.getElementById("pull").addEventListener("click", function(){ pullPlans(true); });
@@ -643,10 +664,26 @@ function pullPlans(interactive){
 drawGrid();
 (function(){
   var t = dateKey(new Date());
-  // 端末にその日のデータが無いときだけ、保存済みの内容を静かに取り込む
-  // （スマホで開くだけでPCの内容が出るように。ローカルの編集は上書きしない）
-  if(localStorage.getItem(storeKey(t))){ setDate(t); return; }
-  pullPlans(false).then(function(){ setDate(t); }, function(){ setDate(t); });
+  setDate(t);
+  // クラウドに自分より新しい版があれば静かに取り込む。
+  // （スマホ側にも固定枠が自動で入るため「データが無いときだけ」では永久に取り込めない。
+  //   版のタイムスタンプで比べて、新しいときだけ上書きする。）
+  fetch(FILE+"?t="+Date.now(), {cache:"no-store"})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if(!j || !j.updated) return;
+      var seen = localStorage.getItem("planner-synced") || "";
+      if(j.updated <= seen) return;                       // 既に取り込み済み
+      Object.keys(j.plans || {}).forEach(function(d){
+        localStorage.setItem("planner:"+d, JSON.stringify(j.plans[d]));
+        localStorage.setItem("planner-seeded:"+d,
+          JSON.stringify(DAILY_FIXED.map(function(f){ return f.name; })));
+      });
+      localStorage.setItem("planner-synced", j.updated);
+      blocks = load(curDate); render();
+      setStatus("クラウドから取り込みました");
+    })
+    .catch(function(){});
 })();
 setInterval(drawNow, 60000);
 // 現在時刻あたりまでスクロール
