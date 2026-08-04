@@ -199,7 +199,15 @@ var START_H = 4, END_H = 24;                 // 表示する時間帯
 var HOUR = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
 var PPM = HOUR / 60;                          // 1分あたりのピクセル
 var SNAP = 5;                                 // 5分刻み
-var REFRESH_FROM = 20*60;                     // ここ以降はリフレッシュ帯（作業を置かない）
+var REFRESH_DEFAULT = 20*60 + 30;             // ディナーが無い日の既定
+/* リフレッシュ帯の開始は「ディナーを食べ終わったら」。
+   時刻ではなく既存の行動に紐づけたほうが習慣として定着しやすいため、
+   ディナーを動かせば帯もついてくる。 */
+function refreshFrom(){
+  var dn = blocks.filter(function(b){ return b.name.indexOf("ディナー") === 0; })
+                 .sort(function(a,b){ return a.t-b.t; })[0];
+  return dn ? dn.t + dn.d : REFRESH_DEFAULT;
+}
 var blocks = [];                              // {id,t,d,name,k,detail}
 var curDate = null, editingId = null;
 
@@ -209,7 +217,7 @@ var DAILY_FIXED = [
   {t: 5*60, d:30, name:"明朝タスク", k:"f"},
   {t: 5*60+30, d:90, name:"資格勉強90分（簿記2級）", k:"p"},
   {t:12*60, d:30, name:"ランチ",     k:"f"},
-  {t:19*60, d:30, name:"ディナー",   k:"f"},
+  {t:20*60, d:30, name:"ディナー",   k:"f"},
   {t:22*60, d:30, name:"前夜タスク", k:"f"}
 ];
 
@@ -279,10 +287,6 @@ function drawGrid(){
     html += '<div class="hr" style="top:'+top+'px"><span>'+pad(h)+':00</span></div>';
     html += '<div class="hr half" style="top:'+(top+HOUR/2)+'px"></div>';
   }
-  // リフレッシュ帯（REFRESH_FROM 〜 終端）
-  var rTop = (REFRESH_FROM - START_H*60) * PPM;
-  html += '<div class="band" style="top:'+rTop+'px;height:'+((END_H*60 - REFRESH_FROM)*PPM)+'px">'+
-          '<span>リフレッシュ</span></div>';
   grid.innerHTML = html;
 }
 
@@ -353,7 +357,18 @@ function drawNow(){
   grid.appendChild(el);
 }
 
-function render(){ drawBlocks(); }
+function drawBand(){
+  var old = grid.querySelector(".band"); if(old) old.remove();
+  var from = refreshFrom();
+  if(from >= END_H*60) return;
+  var el = document.createElement("div");
+  el.className = "band";
+  el.style.top = ((from - START_H*60) * PPM) + "px";
+  el.style.height = ((END_H*60 - from) * PPM) + "px";
+  el.innerHTML = '<span>リフレッシュ ' + hhmm(from) + '〜</span>';
+  grid.appendChild(el);
+}
+function render(){ drawBlocks(); drawBand(); }
 
 /* ============ ドラッグ／リサイズ ============ */
 var drag = null;
