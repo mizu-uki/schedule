@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lofi Longform Uploader</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.8; max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.1rem; margin-top: 2.5rem; border-bottom: 1px solid rgba(128,128,128,.35); padding-bottom: .3rem; }
+  .meta { opacity: .7; font-size: .9rem; margin-top: 0; }
+  ul { padding-left: 1.2rem; }
+  code { font-size: .9em; background: rgba(128,128,128,.15); padding: .1em .35em; border-radius: .25em; }
+  .links { margin-top: 2.5rem; padding: 1rem 1.25rem; border: 1px solid rgba(128,128,128,.4); border-radius: .5rem; }
+  .links p { margin: .4rem 0; }
+  .channels a { display: block; margin: .3rem 0; }
+  .lang { margin-top: 4rem; padding-top: 1rem; border-top: 2px solid rgba(128,128,128,.35); }
+</style>
+</head>
+<body>
+
+<h1>Lofi Longform Uploader</h1>
+<p class="meta">個人運営の YouTube チャンネル向け 長尺BGM動画アップロードツール</p>
+
+<p>
+本ツールは、運営者（上田瑞起）が自分の YouTube チャンネルへ、自作の長尺BGM動画（3〜4時間）を
+投稿するために使用する非公開のコマンドラインツールです。一般に配布・公開しておらず、
+運営者以外の利用者はいません。
+</p>
+
+<h2>対象チャンネル</h2>
+<p class="channels">
+  <a href="https://www.youtube.com/@tokyorainymusic">Tokyo Rainy — https://www.youtube.com/@tokyorainymusic</a>
+  <a href="https://www.youtube.com/@Lofi-with-Latte">Lofi with Latte — https://www.youtube.com/@Lofi-with-Latte</a>
+</p>
+<p>
+動画に使用しているイラスト・映像・楽曲はすべて運営者が制作したものです。
+</p>
+
+<h2>機能</h2>
+<ul>
+  <li>完成した動画ファイルを、運営者自身のチャンネルへアップロードする（<code>videos.insert</code>）</li>
+  <li>その動画用に用意したカスタムサムネイルを設定する（<code>thumbnails.set</code>）</li>
+  <li>運営者自身の再生リストを名前で検索し（<code>playlists.list</code>）、動画を追加する（<code>playlistItems.insert</code>）</li>
+</ul>
+<p>
+上記以外の API は呼び出しません。他のユーザー、他のチャンネル、視聴者に関する情報は取得しません。
+</p>
+
+<h2>YouTube API サービスの利用</h2>
+<p>
+本ツールは <strong>YouTube API サービス</strong>を利用しています。
+認証には Google の OAuth 2.0 を使用し、運営者本人のアカウントにのみアクセスします。
+本ツールの利用にあたっては
+<a href="https://www.youtube.com/t/terms">YouTube 利用規約</a>および
+<a href="https://policies.google.com/privacy">Google プライバシー ポリシー</a>が適用されます。
+</p>
+
+<div class="links">
+  <p><strong>プライバシーポリシー</strong>: <a href="./lofi-uploader-privacy.html">https://mizu-uki.github.io/schedule/lofi-uploader-privacy.html</a></p>
+  <p><strong>利用規約</strong>: <a href="./lofi-uploader-terms.html">https://mizu-uki.github.io/schedule/lofi-uploader-terms.html</a></p>
+  <p><strong>お問い合わせ</strong>: ueda123g@gmail.com</p>
+</div>
+
+<div class="lang">
+
+<h1>Lofi Longform Uploader</h1>
+<p class="meta">A private uploader for long-form background-music videos</p>
+
+<p>
+This is a private command-line tool used by its owner (Mizuki Ueda) to upload their own
+long-form (3–4 hour) background-music videos to their own YouTube channels. It is not
+distributed or publicly available, and it has no users other than the owner.
+</p>
+
+<h2>Channels</h2>
+<p class="channels">
+  <a href="https://www.youtube.com/@tokyorainymusic">Tokyo Rainy — https://www.youtube.com/@tokyorainymusic</a>
+  <a href="https://www.youtube.com/@Lofi-with-Latte">Lofi with Latte — https://www.youtube.com/@Lofi-with-Latte</a>
+</p>
+<p>All artwork, animation and music in the videos are created by the owner.</p>
+
+<h2>What it does</h2>
+<ul>
+  <li>Uploads a finished video file to the owner's own channel (<code>videos.insert</code>)</li>
+  <li>Sets the custom thumbnail made for that video (<code>thumbnails.set</code>)</li>
+  <li>Looks up one of the owner's own playlists by title (<code>playlists.list</code>) and adds the video to it (<code>playlistItems.insert</code>)</li>
+</ul>
+<p>
+No other API endpoints are called. No information about other users, other channels or
+viewers is collected.
+</p>
+
+<h2>YouTube API Services</h2>
+<p>
+This Tool uses <strong>YouTube API Services</strong>. Authentication is performed with Google
+OAuth 2.0 and accesses only the owner's own account. Use of the Tool is subject to the
+<a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a> and the
+<a href="https://policies.google.com/privacy">Google Privacy Policy</a>.
+</p>
+
+<div class="links">
+  <p><strong>Privacy Policy</strong>: <a href="./lofi-uploader-privacy.html">https://mizu-uki.github.io/schedule/lofi-uploader-privacy.html</a></p>
+  <p><strong>Terms of Service</strong>: <a href="./lofi-uploader-terms.html">https://mizu-uki.github.io/schedule/lofi-uploader-terms.html</a></p>
+  <p><strong>Contact</strong>: ueda123g@gmail.com</p>
+</div>
+
+</div>
+
+</body>
+</html>
