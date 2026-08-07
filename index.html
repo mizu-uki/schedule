@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <!--
   統合シェル（タブの器）。ここは原則いじらない。
-  1日の流れ順に3タブへフラット化：
-    🌅明朝5–8  = morning-routine の内部タブ "morning"
-    📅今日の予定 = today.html（毎日ここだけ差し替える）
-    🌙前夜の準備 = morning-routine の内部タブ "night"
+  1日の流れ順に3タブ：
+    🌅明朝  = morning-routine の内部タブ "morning"
+    ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
+    🌙前夜  = morning-routine の内部タブ "night"
+  ※かつてあった「今日の予定」タブ（today.html のチェックリスト）は
+    組むタブと役割が重複するため廃止。today.html 自体は残してある。
   morning-routine は同一オリジンなので、iframe内のタブを直接クリックし、
   内部のタブバーは隠してタブの二重表示をなくしている。
   （もし向こうのDOM構造が変わっても、隠せないだけで壊れないようにしてある）
@@ -58,22 +60,18 @@
 <div class="tabbar">
   <div class="tabs">
     <div class="tab" id="tabM">🌅 明朝</div>
-    <div class="tab" id="tabS">📅 今日</div>
     <div class="tab" id="tabP">✏️ 組む</div>
     <div class="tab" id="tabN">🌙 前夜</div>
   </div>
 </div>
 <div class="panes">
   <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
-  <!-- src は日付付きでJSから設定（日をまたいだら必ず最新の today.html を取りに行くため） -->
-  <iframe id="fS" title="今日の予定"></iframe>
   <!-- src は JS から付与（plan.html も更新が即反映されるように） -->
   <iframe id="fP" title="デイプランナー"></iframe>
 </div>
 
 <script>
-  var fM = document.getElementById('fM'), fS = document.getElementById('fS'),
-      fP = document.getElementById('fP');
+  var fM = document.getElementById('fM'), fP = document.getElementById('fP');
   // 外部から ?tab=p&day=next で呼ばれたら、プランナーを翌日で開く
   var Q = new URLSearchParams(location.search);
   var planQ = 'plan.html?t=' + Date.now();
@@ -86,7 +84,6 @@
   }
   fP.src = planQ;                          // 10分キャッシュで古い版が動くのを防ぐ
   var BTN = { m: document.getElementById('tabM'),
-              s: document.getElementById('tabS'),
               p: document.getElementById('tabP'),
               n: document.getElementById('tabN') };
   var INNER = { m: 'morning', n: 'night' };   // morning-routine 側の data-t
@@ -142,12 +139,7 @@
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
     var useMorning = (which === 'm' || which === 'n');
     fM.classList.toggle('on', useMorning);
-    fS.classList.toggle('on', which === 's');
     fP.classList.toggle('on', which === 'p');
-    if(which === 's'){
-      // プランナーで編集した内容を反映するため、開くたびに読み直す
-      fS.src = 'today.html?t=' + Date.now();
-    }
     if(useMorning){
       wanted = INNER[which];
       applyInner(wanted);          // 読み込み済みなら即反映。未了ならload時に反映
@@ -157,7 +149,6 @@
     }
   }
   BTN.m.addEventListener('click', function(){ show('m', true); });
-  BTN.s.addEventListener('click', function(){ show('s', true); });
   BTN.p.addEventListener('click', function(){ show('p', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });
 
@@ -167,13 +158,13 @@
     var pick = null;
     try{
       var s = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if(s && s.d === today() && BTN[s.t]) pick = s.t;
+      if(s && s.d === today() && BTN[s.t]) pick = s.t;   // 廃止したタブは BTN に無いので自動的に無視される
     }catch(e){}
     var forced = Q.get('tab');             // 外部リンクからの指定が最優先
     if(forced && BTN[forced]) pick = forced;
     if(!pick){
       var h = new Date().getHours();
-      pick = (h >= 4 && h < 12) ? 'm' : (h >= 20 || h < 4) ? 'n' : 's';
+      pick = (h >= 4 && h < 12) ? 'm' : (h >= 20 || h < 4) ? 'n' : 'p';
     }
     show(pick, false);
   })();
