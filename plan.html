@@ -59,11 +59,9 @@
   .hr{position:absolute;left:-58px;right:0;height:var(--hour);border-top:1px solid var(--line)}
   .hr span{position:absolute;left:0;top:-7px;width:46px;text-align:right;color:var(--sub);font-size:10.5px}
   .hr.half{border-top-style:dotted;opacity:.5}
-  /* リフレッシュ帯。塗りは使わず、境界の破線とラベルだけで示す */
+  /* リフレッシュ帯。境界の破線だけで示す（塗りもラベルも出さない） */
   .band{position:absolute;left:-58px;right:0;z-index:0;pointer-events:none;
     background:none;border-top:1px dashed rgba(123,108,246,.5)}
-  .band span{position:absolute;right:6px;top:4px;font-size:9.5px;font-weight:700;
-    color:var(--refresh);opacity:.75;letter-spacing:.5px}
   .now{position:absolute;left:-58px;right:0;height:0;border-top:2px solid var(--danger);z-index:4;pointer-events:none}
   .now::after{content:"";position:absolute;left:50px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
 
@@ -394,7 +392,6 @@ function drawBand(){
   el.className = "band";
   el.style.top = ((from - START_H*60) * PPM) + "px";
   el.style.height = ((END_H*60 - from) * PPM) + "px";
-  el.innerHTML = '<span>リフレッシュ ' + hhmm(from) + '〜</span>';
   grid.appendChild(el);
 }
 function render(){ drawBlocks(); drawBand(); }
