@@ -59,9 +59,9 @@
   .hr{position:absolute;left:-58px;right:0;height:var(--hour);border-top:1px solid var(--line)}
   .hr span{position:absolute;left:0;top:-7px;width:46px;text-align:right;color:var(--sub);font-size:10.5px}
   .hr.half{border-top-style:dotted;opacity:.5}
-  /* 20時以降は「埋めない場所」。背景で示して、タスクを置きたくならないようにする */
+  /* リフレッシュ帯。塗りは使わず、境界の破線とラベルだけで示す */
   .band{position:absolute;left:-58px;right:0;z-index:0;pointer-events:none;
-    background:rgba(123,108,246,.10);border-top:1px dashed rgba(123,108,246,.5)}
+    background:none;border-top:1px dashed rgba(123,108,246,.5)}
   .band span{position:absolute;right:6px;top:4px;font-size:9.5px;font-weight:700;
     color:var(--refresh);opacity:.75;letter-spacing:.5px}
   .now{position:absolute;left:-58px;right:0;height:0;border-top:2px solid var(--danger);z-index:4;pointer-events:none}
@@ -245,7 +245,6 @@ var curDate = null, editingId = null;
    一度入れた日は「投入済み」の印を付け、消しても復活させない（消したのは本人の判断なので）。 */
 var DAILY_FIXED = [
   {t: 5*60, d:30, name:"明朝タスク", k:"f"},
-  {t: 5*60+30, d:90, name:"資格勉強90分（簿記2級）", k:"p"},
   {t:12*60, d:30, name:"ランチ",     k:"f"},
   {t:20*60, d:30, name:"ディナー",   k:"f"},
   {t:22*60, d:30, name:"前夜タスク", k:"f"}
