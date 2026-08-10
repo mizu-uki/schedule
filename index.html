@@ -38,9 +38,18 @@
     display:flex;flex-direction:column;overflow:hidden}
   /* タブ帯: 画面いっぱいに広げず、本文と同じ幅に収めて中央寄せ */
   .tabbar{flex:0 0 auto;background:var(--bg);border-bottom:1px solid var(--line);
-    padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top))}
-  .tabs{display:flex;gap:4px;max-width:560px;margin:0 auto;
+    padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px}
+  .tabs{display:flex;gap:4px;flex:1 1 auto;max-width:560px;
     background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+  /* 22時までの残り時間。タブの右（狭い画面では下の行）に常時出す */
+  .left{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+    background:rgba(79,140,255,.14);border:1px solid rgba(79,140,255,.45);color:#cfe0ff;
+    border-radius:11px;padding:8px 13px;font-size:12.5px;font-weight:700;
+    font-variant-numeric:tabular-nums}
+  .left b{font-size:15px}
+  .left.warn{background:rgba(255,93,93,.14);border-color:rgba(255,93,93,.5);color:#ffc2c2}
+  @media (max-width:560px){ .left{flex:1 0 100%;justify-content:center} }
   .tab{flex:1 1 0;min-width:0;text-align:center;padding:8px 4px;border:0;
     border-radius:9px;background:transparent;color:var(--sub);font-size:12.5px;font-weight:700;
     cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -63,6 +72,7 @@
     <div class="tab" id="tabP">✏️ 組む</div>
     <div class="tab" id="tabN">🌙 前夜</div>
   </div>
+  <span class="left" id="left" title="今日の22:00までの残り時間"></span>
 </div>
 <div class="panes">
   <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
@@ -168,6 +178,25 @@
     }
     show(pick, false);
   })();
+
+  /* 22時までの残り時間。どのタブを見ていても目に入るようにシェル側で出す。
+     （プランナー内の同じ表示は、埋め込み時は二重になるので向こうで隠している） */
+  var DAY_END = 22*60;
+  function drawLeft(){
+    var el = document.getElementById('left');
+    var n = new Date(), rest = DAY_END - (n.getHours()*60 + n.getMinutes());
+    var over = rest < 0, m = Math.abs(rest);
+    var txt = m >= 60 ? Math.floor(m/60)+'時間'+(m%60 ? (m%60)+'分' : '') : m+'分';
+    el.className = 'left' + (rest < 60 ? ' warn' : '');     // 残り1時間を切ったら赤
+    el.textContent = '';
+    el.appendChild(document.createTextNode(over ? '22:00 から' : '22:00 まで'));
+    var b = document.createElement('b'); b.textContent = txt; el.appendChild(b);
+    if(over) el.appendChild(document.createTextNode('経過'));
+  }
+  drawLeft();
+  setInterval(drawLeft, 30000);
+  // スリープ復帰・タブ復帰で古い数字が残らないように取り直す
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) drawLeft(); });
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(function(){});

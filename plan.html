@@ -242,6 +242,8 @@ var PPM = HOUR / 60;                          // 1分あたりのピクセル
 var SNAP = 5;                                 // 5分刻み
 var MARK_H = [6, 12, 18, 22];                 // 1日の区切りとして線を強調する時刻
 var DAY_END = 22*60;                          // 「今日の残り時間」の締め（前夜タスクの開始）
+/* シェルに埋め込まれて動いているか（単体で開いたときだけ残り時間を自前で出す） */
+var EMBEDDED = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
 var blocks = [];                              // {id,t,d,name,k,detail}
 var curDate = null, editingId = null;
 
@@ -400,7 +402,8 @@ function drawNow(){
    今日を見ているときだけ出す（別の日を編集中に今日の残りが出ていると誤読するため）。 */
 function drawLeft(){
   var el = document.getElementById("left"); if(!el) return;
-  if(curDate !== dateKey(new Date())){ el.className = "left"; el.textContent = ""; return; }
+  // シェル（index.html）に埋め込まれているときは向こうのタブ帯に出るので、ここでは出さない
+  if(EMBEDDED || curDate !== dateKey(new Date())){ el.className = "left"; el.textContent = ""; return; }
   var n = new Date(), rest = DAY_END - (n.getHours()*60 + n.getMinutes());
   var over = rest < 0, m = Math.abs(rest);
   var txt = m >= 60 ? Math.floor(m/60)+"時間"+(m%60 ? (m%60)+"分" : "") : m+"分";
