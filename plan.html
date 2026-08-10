@@ -39,6 +39,13 @@
   .status{color:var(--sub);font-size:11.5px;white-space:nowrap}
   .dow{font-size:12.5px;font-weight:700;color:var(--sub);min-width:2.2em}
   .dow.sat{color:#6fa8ff} .dow.sun{color:#ff8a8a} .dow.today{color:var(--text)}
+  /* 22時までの残り時間。今日を見ているときだけ出す（他の日では意味がないので消す） */
+  .left{display:none;align-items:center;gap:5px;white-space:nowrap;
+    background:rgba(79,140,255,.12);border:1px solid rgba(79,140,255,.45);color:#cfe0ff;
+    border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .left.on{display:inline-flex}
+  .left.warn{background:rgba(255,93,93,.12);border-color:rgba(255,93,93,.5);color:#ffc2c2}
+  .left b{font-size:14px}
 
   /* ---- 本体 ---- */
   .wrap{flex:1 1 auto;display:flex;min-height:0}
@@ -128,6 +135,7 @@
   <button class="btn" id="prev">‹</button>
   <button class="btn" id="next">›</button>
   <button class="btn" id="todayBtn">今日</button>
+  <span class="left" id="left" title="今日の22:00までの残り時間"></span>
   <button class="btn" id="add">＋ ブロック</button>
   <button class="btn" id="undo" title="元に戻す（Cmd/Ctrl+Z）" disabled>↶ 戻す</button>
   <button class="btn" id="sideBtn">📋 タスク</button>
@@ -233,6 +241,7 @@ var HOUR = parseInt(getComputedStyle(document.documentElement).getPropertyValue(
 var PPM = HOUR / 60;                          // 1分あたりのピクセル
 var SNAP = 5;                                 // 5分刻み
 var MARK_H = [6, 12, 18, 22];                 // 1日の区切りとして線を強調する時刻
+var DAY_END = 22*60;                          // 「今日の残り時間」の締め（前夜タスクの開始）
 var blocks = [];                              // {id,t,d,name,k,detail}
 var curDate = null, editingId = null;
 
@@ -385,6 +394,21 @@ function drawNow(){
   el.className = "now";
   el.style.top = ((m - START_H*60)*PPM)+"px";
   grid.appendChild(el);
+}
+
+/* 22時までの残り時間。数字を見て「あと何ができるか」を即断するための表示。
+   今日を見ているときだけ出す（別の日を編集中に今日の残りが出ていると誤読するため）。 */
+function drawLeft(){
+  var el = document.getElementById("left"); if(!el) return;
+  if(curDate !== dateKey(new Date())){ el.className = "left"; el.textContent = ""; return; }
+  var n = new Date(), rest = DAY_END - (n.getHours()*60 + n.getMinutes());
+  var over = rest < 0, m = Math.abs(rest);
+  var txt = m >= 60 ? Math.floor(m/60)+"時間"+(m%60 ? (m%60)+"分" : "") : m+"分";
+  el.className = "left on" + (rest < 60 ? " warn" : "");     // 残り1時間を切ったら赤
+  el.textContent = "";
+  el.appendChild(document.createTextNode(over ? "22:00 から" : "22:00 まで"));
+  var b = document.createElement("b"); b.textContent = txt; el.appendChild(b);
+  if(over) el.appendChild(document.createTextNode("経過"));
 }
 
 /* 区切り線は時間軸そのもの（drawGrid）に描くので、再描画のたびに引き直す必要はない */
@@ -568,7 +592,7 @@ function setDate(key){
   seedDailyFixed(key);
   migrateFixed(key);
   if(localStorage.getItem("gcalUrl")) fetchGCal(false);   // 設定済みなら日付に合わせて取り直す
-  render();
+  render(); drawLeft();
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
 }
 
@@ -995,7 +1019,7 @@ drawGrid();
     })
     .catch(function(){});
 })();
-setInterval(drawNow, 60000);
+setInterval(function(){ drawNow(); drawLeft(); }, 60000);
 // 現在時刻あたりまでスクロール
 (function(){
   var n = new Date(), m = n.getHours()*60+n.getMinutes();
