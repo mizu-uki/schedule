@@ -215,6 +215,7 @@
     </div>
     <div class="acts">
       <button class="btn del" id="fDel">削除</button>
+      <button class="btn" id="fDup" title="同じ内容をもう1つ、空いている一番早い時間に置く（Option＋ドラッグでも複製できます）">複製</button>
       <button class="btn" id="fCancel">閉じる</button>
       <button class="btn primary" id="fSave">保存</button>
     </div>
@@ -302,6 +303,11 @@ function save(){
   }catch(e){ setStatus("保存に失敗しました"); }
 }
 function setStatus(t){ document.getElementById("status").textContent = t; }
+/* 指定の時刻あたりへスクロール（複製先が画面外に置かれたときの案内用） */
+function scrollToMin(m){
+  var sc = document.getElementById("scroll"); if(!sc) return;
+  sc.scrollTo({top: Math.max(0, (m - START_H*60)*PPM - 140), behavior:"smooth"});
+}
 
 /* ============ 描画 ============ */
 var grid = document.getElementById("grid");
@@ -406,8 +412,18 @@ grid.addEventListener("pointerdown", function(e){
   if(!b) return;
   var resizing = !!e.target.closest(".grip");
   pushHistory();
-  drag = {el:el, b:b, resizing:resizing, y0:e.clientY, t0:b.t, d0:b.d, moved:false};
-  el.setPointerCapture(e.pointerId);
+  /* Option(Alt)を押しながら掴んだら複製。元はその場に残し、コピーのほうを動かす。
+     修飾キーのあるPC専用の近道なので、スマホでは編集ダイアログの「複製」を使う。 */
+  var dup = false;
+  if(e.altKey && !resizing){
+    var nb = {id:uid(), t:b.t, d:b.d, name:b.name, k:b.k, detail:b.detail||"", src:""};
+    blocks.push(nb);
+    b = nb; dup = true;
+    drawBlocks();                                     // 掴む対象を複製後のDOMに取り直す
+    el = grid.querySelector('.blk[data-id="'+nb.id+'"]') || el;
+  }
+  drag = {el:el, b:b, resizing:resizing, y0:e.clientY, t0:b.t, d0:b.d, moved:false, dup:dup};
+  try{ el.setPointerCapture(e.pointerId); }catch(err){}
   el.classList.add("drag");
 });
 
@@ -426,11 +442,12 @@ grid.addEventListener("pointermove", function(e){
 
 function endDrag(){
   if(!drag) return;
-  var moved = drag.moved, b = drag.b;
+  var moved = drag.moved, b = drag.b, dup = drag.dup;
   drag.el && drag.el.classList.remove("drag");
   drag = null;
-  if(moved){ save(); }
-  else{ openEditor(b.id); }     // 動かしていなければ編集を開く
+  if(moved || dup){ save(); }   // 複製は動かしていなくても増えているので必ず保存する
+  if(!moved){ openEditor(b.id); }                                   // 動かしていなければ編集を開く
+  else if(dup){ setStatus("複製しました："+hhmm(b.t)+" "+(b.name||"（無題）")); }
   render();
 }
 grid.addEventListener("pointerup", endDrag);
@@ -499,16 +516,36 @@ document.querySelectorAll("#fKind .kind").forEach(function(el){
     el.classList.add("on");
   });
 });
-document.getElementById("fSave").addEventListener("click", function(){
-  var b = blocks.find(function(x){ return x.id===editingId; }); if(!b) return;
-  pushHistory();
+/* ダイアログの入力内容をブロックへ写す（保存と複製で共通） */
+function applyForm(b){
   b.name = document.getElementById("fName").value.trim() || "（無題）";
   b.t = clamp(snap(toMin(document.getElementById("fStart").value)), 0, END_H*60);
   b.d = clamp(parseInt(document.getElementById("fDur").value||"0",10), 0, END_H*60-b.t);
   var on = document.querySelector("#fKind .kind.on");
   b.k = on ? on.dataset.k : "p";
   b.detail = document.getElementById("fDetail").value.trim();
+}
+document.getElementById("fSave").addEventListener("click", function(){
+  var b = blocks.find(function(x){ return x.id===editingId; }); if(!b) return;
+  pushHistory();
+  applyForm(b);
   save(); render(); closeEditor();
+});
+
+/* 複製：いま画面に出ている内容のまま、もう1つを空いている一番早い時間に置く。
+   ・元のブロックにも入力内容を反映してから複製する（見えているものがそのまま増える）
+   ・カレンダー由来（src=gcal）を複製したものは手置き扱いにする。
+     src を引き継ぐと、次の同期で「カレンダーに無い」と判定されて消えたり、
+     同名2件が同期の対象になって挙動が読めなくなるため。 */
+document.getElementById("fDup").addEventListener("click", function(){
+  var b = blocks.find(function(x){ return x.id===editingId; }); if(!b) return;
+  pushHistory();
+  applyForm(b);
+  var nb = {id:uid(), t:firstFreeSlot(b.d), d:b.d, name:b.name, k:b.k, detail:b.detail, src:""};
+  blocks.push(nb);
+  save(); render(); closeEditor();
+  setStatus("複製しました："+hhmm(nb.t)+" "+nb.name);
+  scrollToMin(nb.t);                                   // 置いた先が画面外のことがあるので寄せる
 });
 document.getElementById("fDel").addEventListener("click", function(){
   pushHistory();
