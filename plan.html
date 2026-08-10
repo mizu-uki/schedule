@@ -18,7 +18,6 @@
     --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7eaf0; --sub:#8b93a3;
     --k:#4f8cff; --p:#59d98a; --f:#c9a227; --danger:#ff5d5d;
     --hour:56px;              /* 1時間の高さ。1分 = var(--hour)/60 */
-    --refresh:#7b6cf6;        /* リフレッシュ帯（夜20時以降） */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
@@ -59,9 +58,10 @@
   .hr{position:absolute;left:-58px;right:0;height:var(--hour);border-top:1px solid var(--line)}
   .hr span{position:absolute;left:0;top:-7px;width:46px;text-align:right;color:var(--sub);font-size:10.5px}
   .hr.half{border-top-style:dotted;opacity:.5}
-  /* リフレッシュ帯。境界の破線だけで示す（塗りもラベルも出さない） */
-  .band{position:absolute;left:-58px;right:0;z-index:0;pointer-events:none;
-    background:none;border-top:1px dashed rgba(123,108,246,.5)}
+  /* 1日の区切り（6/12/18/22時）。時間の流れを4つに割って現在地を掴みやすくする。
+     30分線の点線と紛れないよう、破線＋明るい色にして時刻も強調する。 */
+  .hr.mark{border-top:1px dashed rgba(139,147,163,.5)}
+  .hr.mark span{color:var(--text);font-weight:700}
   .now{position:absolute;left:-58px;right:0;height:0;border-top:2px solid var(--danger);z-index:4;pointer-events:none}
   .now::after{content:"";position:absolute;left:50px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
 
@@ -232,15 +232,7 @@ var START_H = 4, END_H = 24;                 // 表示する時間帯
 var HOUR = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
 var PPM = HOUR / 60;                          // 1分あたりのピクセル
 var SNAP = 5;                                 // 5分刻み
-var REFRESH_DEFAULT = 20*60;                  // ディナーが無い日の既定
-/* リフレッシュ帯の開始は「ディナーを食べ始めたら」。
-   時刻ではなく既存の行動に紐づけたほうが習慣として定着しやすいため、
-   ディナーを動かせば帯もついてくる（食事そのものもリフレッシュの一部）。 */
-function refreshFrom(){
-  var dn = blocks.filter(function(b){ return b.name.indexOf("ディナー") === 0; })
-                 .sort(function(a,b){ return a.t-b.t; })[0];
-  return dn ? dn.t : REFRESH_DEFAULT;
-}
+var MARK_H = [6, 12, 18, 22];                 // 1日の区切りとして線を強調する時刻
 var blocks = [];                              // {id,t,d,name,k,detail}
 var curDate = null, editingId = null;
 
@@ -321,7 +313,8 @@ function drawGrid(){
   var html = "";
   for(var h=START_H; h<END_H; h++){
     var top = (h-START_H)*HOUR;
-    html += '<div class="hr" style="top:'+top+'px"><span>'+pad(h)+':00</span></div>';
+    var mark = MARK_H.indexOf(h) >= 0 ? " mark" : "";
+    html += '<div class="hr'+mark+'" style="top:'+top+'px"><span>'+pad(h)+':00</span></div>';
     html += '<div class="hr half" style="top:'+(top+HOUR/2)+'px"></div>';
   }
   grid.innerHTML = html;
@@ -394,17 +387,8 @@ function drawNow(){
   grid.appendChild(el);
 }
 
-function drawBand(){
-  var old = grid.querySelector(".band"); if(old) old.remove();
-  var from = refreshFrom();
-  if(from >= END_H*60) return;
-  var el = document.createElement("div");
-  el.className = "band";
-  el.style.top = ((from - START_H*60) * PPM) + "px";
-  el.style.height = ((END_H*60 - from) * PPM) + "px";
-  grid.appendChild(el);
-}
-function render(){ drawBlocks(); drawBand(); }
+/* 区切り線は時間軸そのもの（drawGrid）に描くので、再描画のたびに引き直す必要はない */
+function render(){ drawBlocks(); }
 
 /* ============ ドラッグ／リサイズ ============ */
 var drag = null;
