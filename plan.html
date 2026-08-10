@@ -88,6 +88,10 @@
   .grip{position:absolute;left:50%;transform:translateX(-50%);bottom:0;
     width:44px;height:11px;cursor:ns-resize;touch-action:none;
     display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
+  /* 上端のハンドル。終わりを動かさずに始まりだけを前後させる */
+  .grip.top{top:0;bottom:auto;align-items:flex-start;padding:2px 0 0}
+  /* 背の低いブロックは上下のハンドルで全体が埋まってしまうので、当たり判定を薄くする */
+  .blk.tight .grip{height:7px}
   .grip::after{content:"";width:26px;height:2.5px;border-radius:2px;background:currentColor;opacity:.5}
   .blk:hover .grip::after{opacity:.85}
 
@@ -358,7 +362,7 @@ function drawBlocks(){
     var h = Math.max(b.d * PPM, 20);
     var slim = h < 40;                       // 2行に収まらない高さなら1行表示
     var el = document.createElement("div");
-    el.className = "blk" + (slim ? " slim" : "");
+    el.className = "blk" + (slim ? " slim" : "") + (h < 34 ? " tight" : "");
     el.dataset.k = b.k; el.dataset.id = b.id;
     if(b.src) el.dataset.src = b.src;
     el.style.top = ((b.t - START_H*60) * PPM) + "px";
@@ -369,7 +373,7 @@ function drawBlocks(){
       el.style.right = "auto";
     }
     var range = slim ? hhmm(b.t) : (b.d>0 ? hhmm(b.t)+"–"+hhmm(b.t+b.d)+' ・'+b.d+'分' : hhmm(b.t));
-    el.innerHTML = '<div class="t"></div><div class="n"></div>' +
+    el.innerHTML = '<div class="grip top"></div><div class="t"></div><div class="n"></div>' +
                    '<div class="grip"></div>';   // 当たり判定は中央のバーだけ（CSS側で限定）
     el.querySelector(".t").textContent = range;
     el.querySelector(".n").textContent = b.name;
@@ -410,7 +414,8 @@ grid.addEventListener("pointerdown", function(e){
   if(!el) return;
   var b = blocks.find(function(x){ return x.id === el.dataset.id; });
   if(!b) return;
-  var resizing = !!e.target.closest(".grip");
+  var g = e.target.closest(".grip");
+  var resizing = !!g, topSide = !!(g && g.classList.contains("top"));
   pushHistory();
   /* Option(Alt)を押しながら掴んだら複製。元はその場に残し、コピーのほうを動かす。
      修飾キーのあるPC専用の近道なので、スマホでは編集ダイアログの「複製」を使う。 */
@@ -422,7 +427,7 @@ grid.addEventListener("pointerdown", function(e){
     drawBlocks();                                     // 掴む対象を複製後のDOMに取り直す
     el = grid.querySelector('.blk[data-id="'+nb.id+'"]') || el;
   }
-  drag = {el:el, b:b, resizing:resizing, y0:e.clientY, t0:b.t, d0:b.d, moved:false, dup:dup};
+  drag = {el:el, b:b, resizing:resizing, top:topSide, y0:e.clientY, t0:b.t, d0:b.d, moved:false, dup:dup};
   try{ el.setPointerCapture(e.pointerId); }catch(err){}
   el.classList.add("drag");
 });
@@ -432,7 +437,13 @@ grid.addEventListener("pointermove", function(e){
   var dy = e.clientY - drag.y0;
   if(Math.abs(dy) > 3) drag.moved = true;
   var dm = snap(dy / PPM);
-  if(drag.resizing){
+  if(drag.resizing && drag.top){
+    /* 上端は「終わりを固定したまま始まりを動かす」。
+       開始を後ろへ動かした分だけ長さが縮む（最短5分＝SNAP1目盛りは残す）。 */
+    var end = drag.t0 + drag.d0;
+    var nt = clamp(snap(drag.t0 + dm), START_H*60, end - SNAP);
+    drag.b.t = nt; drag.b.d = end - nt;
+  }else if(drag.resizing){
     drag.b.d = clamp(drag.d0 + dm, 0, END_H*60 - drag.b.t);
   }else{
     drag.b.t = clamp(snap(drag.t0 + dm), START_H*60, END_H*60 - drag.b.d);
