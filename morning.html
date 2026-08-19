@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<!--
+  明朝／前夜のチェックリスト本体。★このファイルが正★
+  ・シェル index.html の 🌅明朝 / 🌙前夜 タブに iframe で読み込まれる（同一リポジトリ・同一オリジン）
+  ・かつては別リポジトリ mizu-uki/morning-routine から読み込んでいたが、
+    二重管理でどちらが正か分からなくなったため 2026-08-19 にこちらへ集約した。
+    向こうの URL は /schedule/ へのリダイレクトだけを残してある。
+  ・チェック状態は localStorage（morningPlanState ほか）。origin が同じなので移行前の記録もそのまま使える。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>5時起き 行動計画</title>
+
+<!-- PWA -->
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0f1419">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="5時起き">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+
+<style>
+  :root{
+    --bg:#0f1419; --card:#1a2129; --card2:#212b35;
+    --text:#e6edf3; --sub:#8b98a5; --line:#2d3742;
+    --accent:#4ea1ff; --green:#3fb950; --amber:#e3b341; --pink:#f778ba;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Segoe UI",sans-serif;
+    line-height:1.6;
+    padding:max(16px,env(safe-area-inset-top)) 14px calc(60px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:600px; margin:0 auto;}
+  h1{font-size:1.35rem; margin:.2em 0 .1em; text-align:center;}
+  .date{text-align:center; color:var(--sub); font-size:.85rem; margin-bottom:6px;}
+  .lead{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; font-size:.9rem; color:var(--sub); margin:14px 0 22px;
+  }
+  .lead b{color:var(--text);}
+
+  .merits{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    margin:-10px 0 22px; overflow:hidden;
+  }
+  .merits summary{
+    cursor:pointer; padding:12px 14px; font-size:.9rem; font-weight:700;
+    color:var(--amber); list-style:none; user-select:none;
+  }
+  .merits summary::-webkit-details-marker{display:none;}
+  .merits[open] summary{border-bottom:1px solid var(--line);}
+  .merits ul{margin:0; padding:12px 16px 12px 30px; font-size:.86rem; color:var(--sub);}
+  .merits li{margin-bottom:8px;}
+  .merits li:last-child{margin-bottom:0;}
+  .merits b{color:var(--text);}
+
+  .tabs{display:flex; gap:8px; margin-bottom:18px;}
+  .tab{
+    flex:1; text-align:center; padding:11px 0; border-radius:10px;
+    background:var(--card); border:1px solid var(--line); color:var(--sub);
+    font-weight:700; font-size:.95rem; cursor:pointer; user-select:none;
+  }
+  .tab.active{background:var(--accent); color:#06121f; border-color:var(--accent);}
+
+  section{display:none;}
+  section.show{display:block;}
+
+  .block{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:14px 14px 6px; margin-bottom:14px;
+  }
+  .time{font-size:.78rem; font-weight:700; color:var(--accent); letter-spacing:.04em;}
+  .ttl{font-size:1.05rem; font-weight:700; margin:2px 0 8px;}
+  .purpose{
+    background:var(--card2); border-left:3px solid var(--amber);
+    border-radius:0 8px 8px 0; padding:8px 11px; font-size:.84rem;
+    color:var(--sub); margin-bottom:10px;
+  }
+  .purpose b{color:var(--amber);}
+  .first{font-size:.82rem; color:var(--green); margin:2px 2px 10px; font-weight:600;}
+  .first .k{opacity:.8;}
+  .note{font-size:.82rem; color:var(--sub); margin:2px 2px 10px; padding-left:11px; border-left:2px solid var(--line);}
+  .note span{display:block; margin-bottom:3px;}
+  .note span:last-child{margin-bottom:0;}
+
+  /* 開閉できる参考メモ */
+  .memo{background:var(--card2); border:1px solid var(--line); border-radius:10px; margin:2px 0 10px; overflow:hidden;}
+  .memo>summary{cursor:pointer; padding:10px 12px; font-size:.84rem; font-weight:700; color:var(--accent); list-style:none; user-select:none;}
+  .memo>summary::-webkit-details-marker{display:none;}
+  .memo[open]>summary{border-bottom:1px solid var(--line);}
+  .memo-body{padding:6px 12px 10px;}
+  .memo-body>details{margin:2px 0;}
+  .memo-body>details+details{border-top:1px solid var(--line);}
+  .memo-body summary{cursor:pointer; font-size:.83rem; font-weight:700; color:var(--text); padding:8px 0 6px;}
+  .memo-body ul,.memo-body ol{margin:2px 0 8px; padding-left:19px; font-size:.8rem; color:var(--sub); line-height:1.7;}
+  .memo-body li{margin-bottom:4px;}
+  .memo-body p{margin:2px 0 8px; font-size:.8rem; color:var(--sub); line-height:1.7;}
+  .memo-body b{color:var(--text);}
+
+  label.chk{
+    display:flex; align-items:flex-start; gap:11px; padding:9px 4px;
+    border-top:1px solid var(--line); cursor:pointer; font-size:.93rem;
+    position:relative;
+  }
+  .block label.chk:first-of-type{border-top:none;}
+  /* チェックボックスは見た目上は隠すが、キーボード/読み上げ用にフォーカス可能を維持 */
+  label.chk input{position:absolute; opacity:0; width:1px; height:1px; margin:0;}
+  .box{
+    flex:0 0 22px; height:22px; margin-top:1px; border-radius:6px;
+    border:2px solid var(--sub); position:relative; transition:.15s;
+  }
+  label.chk input:checked + .box{background:var(--green); border-color:var(--green);}
+  label.chk input:focus-visible + .box{outline:2px solid var(--accent); outline-offset:2px;}
+  label.chk input:checked + .box::after{
+    content:""; position:absolute; left:6px; top:2px; width:5px; height:10px;
+    border:solid #06121f; border-width:0 3px 3px 0; transform:rotate(45deg);
+  }
+  label.chk input:checked ~ .txt{color:var(--sub); text-decoration:line-through;}
+  .txt{flex:1;}
+  .txt a{color:var(--accent); word-break:break-all;}
+
+  .ovice{
+    display:inline-block; margin-top:4px; background:#06304f; color:#7cc4ff;
+    border:1px solid #1d4f7a; border-radius:8px; padding:8px 12px;
+    text-decoration:none; font-size:.85rem; font-weight:700;
+  }
+  .btnrow{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
+  .btnrow .ovice{margin-top:0;}
+
+  .stretch{
+    background:var(--card2); border:1px solid var(--line);
+    border-radius:10px; padding:11px 12px; margin-bottom:10px;
+  }
+  .stretch-part{
+    display:inline-block; background:#3a2d52; color:#c8b3f0;
+    font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:20px; margin-bottom:7px;
+  }
+  .stretch-title{font-size:.9rem; font-weight:700; color:var(--text); margin-bottom:3px; line-height:1.4;}
+  .stretch-acct{font-size:.76rem; color:var(--sub); margin-bottom:9px;}
+  .stretch-select{
+    display:block; width:100%; margin-bottom:9px; padding:9px 11px;
+    background:var(--card); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-size:.85rem; font-family:inherit;
+  }
+  .stretch-select:focus{outline:none; border-color:var(--accent);}
+
+  .editfield{
+    display:block; width:100%; margin-top:6px; padding:9px 11px;
+    background:var(--card2); border:1px dashed var(--sub); border-radius:8px;
+    color:var(--text); font-size:.9rem; font-family:inherit;
+  }
+  .editfield:focus{outline:none; border:1px solid var(--accent);}
+  .fieldval{color:var(--accent);}
+
+  .sleep{
+    background:linear-gradient(135deg,#1c2733,#241d33);
+    border:1px solid #3a2d52; border-radius:14px; margin-bottom:14px; overflow:hidden;
+  }
+  .fold>summary{cursor:pointer; list-style:none; user-select:none;}
+  .fold>summary::-webkit-details-marker{display:none;}
+  .fold>summary::after{content:"▾"; float:right; color:var(--sub); font-weight:700; transition:transform .15s;}
+  .fold[open]>summary::after{content:"▴";}
+  .fold[open]>summary{margin-bottom:8px;}
+  .sleep summary{
+    cursor:pointer; padding:13px 14px; font-size:1rem; font-weight:700;
+    list-style:none; user-select:none;
+  }
+  .sleep summary::-webkit-details-marker{display:none;}
+  .sleep[open] summary{border-bottom:1px solid #3a2d52;}
+  .sleep ul{margin:0; padding:12px 16px 12px 34px; font-size:.88rem; color:var(--sub);}
+  .sleep li{margin-bottom:6px;}
+  .sleep li:last-child{margin-bottom:0;}
+  .sleep .big{color:var(--pink); font-weight:700;}
+
+  .resetbar{text-align:center; margin-top:24px;}
+  .reset{
+    background:transparent; border:1px solid var(--line); color:var(--sub);
+    border-radius:20px; padding:9px 20px; font-size:.85rem; cursor:pointer;
+  }
+  .reset:active{background:var(--card);}
+  .progress{text-align:center; color:var(--sub); font-size:.8rem; margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌅 5時起き 行動計画</h1>
+  <div class="date" id="today"></div>
+
+  <div class="lead">
+    <b>この習慣の意味：</b> 5時起きを続けるための“錨（いかり）”を作る。
+    一人だと二度寝・ダラダラに負けるから、<b>外部の約束（もくもく会）</b>と
+    <b>各タスクの目的</b>で自分を引っ張る。
+  </div>
+
+  <details class="merits">
+    <summary>☀️ 早起きのメリット（タップで確認）</summary>
+    <ul class="merits-list"></ul>
+  </details>
+
+  <div class="tabs">
+    <div class="tab" data-t="morning">🌅 明朝 5–8時</div>
+    <div class="tab active" data-t="night">🌙 前夜の準備</div>
+  </div>
+
+  <!-- ========== 前夜 ========== -->
+  <section id="night" class="show">
+
+    <details class="sleep">
+      <summary>😴 寝付けるか不安なあなたへ（タップで開く）</summary>
+      <ul>
+        <li><span class="big">「眠れなくてもOK」と決める。</span>焦りが一番の敵。5時に起きれば次の夜は自然に眠くなる（体内時計のリセット）</li>
+        <li>20:30までに<b>お風呂・シャワー</b>（深部体温の上げ下げで眠気が来る）</li>
+        <li>21:30から<b>スマホ・PCをやめる</b>／寝室に持ち込まない</li>
+        <li>部屋を<b>暗く・少し涼しく</b>。布団で「眠ろう」と頑張らない（4秒吸って8秒吐く呼吸）</li>
+        <li>14時以降の<b>カフェイン</b>は控える</li>
+      </ul>
+    </details>
+
+    <div class="block">
+      <div class="ttl">🍽 夕飯後</div>
+
+      <label class="chk"><input type="checkbox" data-id="n13"><span class="box"></span>
+        <span class="txt">🍚 夕飯を食べる <b>※20時までに</b><span style="color:var(--sub);font-size:.8rem;">（消化・睡眠の質を上げる）</span></span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n14"><span class="box"></span>
+        <span class="txt">💊 アレルギー薬・点鼻薬<span style="color:var(--sub);font-size:.8rem;">（鼻炎の治療）</span></span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n15"><span class="box"></span>
+        <span class="txt">💊 内服薬・外用薬<span style="color:var(--sub);font-size:.8rem;">（水虫の治療）</span></span></label>
+    </div>
+
+    <div class="block">
+      <div class="ttl">🛁 夜のケア・身支度</div>
+
+      <label class="chk"><input type="checkbox" data-id="n6"><span class="box"></span>
+        <span class="txt">👕 パジャマに着替える</span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n7"><span class="box"></span>
+        <span class="txt">🦷 フロス → 歯磨き（2〜3分）<span style="color:var(--sub);font-size:.8rem;">（歯周病・虫歯予防）</span></span></label>
+
+      <details class="memo">
+        <summary>📝 歯磨き・フロスのメモ（タップで開く）</summary>
+        <div class="memo-body">
+
+          <details>
+            <summary>🪥 歯ブラシの交換（1ヶ月）</summary>
+            <p>1ヶ月に1度の交換は妥当。毛先が開いていなくても弾力は落ちるので<b>1〜2ヶ月が推奨レンジ</b>。5本入りで5ヶ月分・月238円なら気にする額ではない。</p>
+          </details>
+
+          <details>
+            <summary>💪 歯磨きの力加減（力はほぼ要らない）</summary>
+            <ul>
+              <li>目安は <b>150〜200g</b>。毛先が「わずかに広がるか広がらないか」。キッチンスケールに押し当てると感覚が掴める</li>
+              <li>強く当てると毛先が寝て、歯間や歯周ポケットの入口に入らない。汚れを落とすのは<b>毛先</b>なので、力むほど落ちなくなる逆転が起きる</li>
+              <li>力任せの往復は<b>歯ぐき退縮・くさび状欠損</b>（根元がV字に削れる）の主因。これは戻らない</li>
+            </ul>
+            <p>効くのは力ではなく、この3つ：</p>
+            <ol>
+              <li><b>角度</b> — 歯と歯ぐきの境目に45度で当てる</li>
+              <li><b>ストローク幅</b> — 5〜10mm。1〜2本ずつ動かす</li>
+              <li><b>時間</b> — 最低2分</li>
+            </ol>
+            <p>ルシェロB-20Mは「細い毛を境目に入れる」設計。力を抜くほど設計どおりに機能し、押し付けると普通の歯ブラシになる。ブラシで届くのは<b>歯面のみ</b>。歯間はフロスか歯間ブラシでしか落ちない。</p>
+          </details>
+
+          <details>
+            <summary>🧵 フロスの使い方</summary>
+            <p><b>順番：フロス → ブラッシング。</b>先に歯間の汚れを掻き出すと、後のフッ素が歯間まで行き渡る。</p>
+            <ol>
+              <li>長さ40cm程度。両手の中指に巻き、間を1〜1.5cmにしてつまむ</li>
+              <li>ノコギリのように前後させながらゆっくり挿入（真下に落とすと歯ぐきを切る）</li>
+              <li>歯間に入ったら片側の歯面に<b>C字型</b>に沿わせる</li>
+              <li>歯ぐきの中に1〜2mm入れてから上下に数回こすり上げる（ポケット入口が一番汚れる）</li>
+              <li>同じ隙間で<b>反対側の歯面</b>も同様に（1隙間＝2面。ここが抜けやすい）</li>
+              <li>抜くときも前後に動かし、歯間ごとに指を巻き替えて未使用部分を使う</li>
+            </ol>
+            <p><b>やりがちなミス：</b>上下往復だけ／歯ぐき手前で止める／一番奥の歯の奥側を飛ばす／血が出るからやめる（出血は炎症のサイン。1〜2週間で収まる。毎回同じ場所だけなら歯科へ）。</p>
+            <p><b>頻度：</b>1日1回、夜だけでOK。全歯間で2〜3分。<b>道具：</b>糸巻きタイプが上位互換。隙間が広い・歯ぐきが下がった所は歯間ブラシが効率的。</p>
+          </details>
+
+          <details>
+            <summary>🛡 フッ素を活かす（なぜフロスが先か）</summary>
+            <p>歯間は虫歯ができやすいのにフッ素が最も届きにくい弱点。歯垢が残って酸で溶け、鏡で見えず痛みも出にくいので気づくと進んでいる。</p>
+            <ol>
+              <li><b>再石灰化を促す</b> — 修復後の結晶を酸に強いフルオロアパタイトに変える</li>
+              <li><b>歯を溶けにくく</b> — 表面がフッ素を取り込み酸への耐性UP</li>
+              <li><b>細菌の酸産生を抑える</b></li>
+            </ol>
+            <p><b>小ワザ：</b>歯磨き後のうがいは最小限（水少量で1回）／就寝前が最重要（唾液が減り再石灰化も落ちる）／市販は上限1,450ppmを選ぶ。</p>
+          </details>
+
+          <details>
+            <summary>⏱ 磨く時間（最低2分・理想3分）</summary>
+            <p>本質は「全部の面をムラなく磨けたか」。磨くべき面は約100面あり、1面数秒で自然に2〜3分になる。多くの人は1分弱で終えていて磨き残しが出る。</p>
+            <ol>
+              <li><b>順番を固定</b> — 右上外側から一筆書きで一周。これだけで磨き残しが激減</li>
+              <li><b>1〜2本ずつ小刻み</b> — ストローク5〜10mm</li>
+              <li><b>45度で境目に</b>（バス法）／力は150〜200g／噛む面は垂直に往復</li>
+            </ol>
+            <p><b>磨き残し三大：</b>奥歯の一番奥の面／下の前歯の裏側／歯と歯ぐきの境目全周。</p>
+            <p><b>運用：</b>夜1回だけ「フロス→磨き→ゆすぎ最小限」を丁寧に3分、朝昼は1〜2分でOK。回数より夜の質。タイマーや電動の2分ブザーで切り上げグセを矯正。</p>
+          </details>
+
+          <details>
+            <summary>🇸🇪 イエテボリ式（ゆすがない歯磨き）</summary>
+            <p>スウェーデン発（1995年）の実在する方法。通常の歯磨きより<b>虫歯予防効果が40%以上高い</b>とされる。「歯磨き粉の泡を洗口液として使い、その後水で洗い流さない」のが発想。</p>
+            <ol>
+              <li>フッ素入り歯磨き粉を<b>2cm</b>つけて歯面全体に広げる</li>
+              <li>2分磨き、<b>10mlの水</b>を含んで30秒クチュクチュ（スラリーリンス）→ 歯間までフッ素を行き渡らせる</li>
+              <li>吐き出したら<b>水ですすがない</b>（10mlで1回だけならOK）。その後<b>2時間は飲食しない</b></li>
+              <li>1日最低2回</li>
+            </ol>
+            <p><b>注意：</b>12歳以上が対象／味・刺激が強め／2時間飲食しない条件があるので現実的には夜だけの運用。フルが面倒なら「少量の水で1回だけ」でも大半の効果は取れる。</p>
+          </details>
+
+          <details>
+            <summary>💦 スラリーリンスとは（＋水は飲んでいい？）</summary>
+            <p><b>スラリー（slurry）＝どろっとした懸濁液。</b>歯磨き粉の泡を吐き出さず、少量の水（10ml前後）を口に含んで混ぜ、その状態で30秒ブクブクすること。</p>
+            <p><b>なぜこの一手間が要るか：</b>泡は高濃度（1,450ppm）だが粘度が高く、歯間や奥歯の裏まで流れず、ブラシが届いた面にしか付いていない。水を少し足すと流動性が出て口の中の全面にフッ素が行き渡る。10mlなら薄まっても数百ppm残り、何回もゆすぐ通常のうがいとは桁違い。狙いは<b>「薄めて広げる」</b>——吐き出してゆすぐのではなく、吐き出さずに薄めて回す。</p>
+            <p><b>水は飲んでいい？</b>厳密なプロトコルでは水も含めて2時間控える（水でもフッ素は流れるため）。ただし実際は：</p>
+            <ul>
+              <li>水と、糖・酸を含む飲食物ではリスクが全く違う。一口の水とジュース/コーヒーは同列に扱わなくてよい</li>
+              <li>一口飲む程度でフッ素が全部流れるわけではなく、効果がゼロになることはない</li>
+              <li><b>就寝前にやれば2時間はほぼ寝ている時間</b>なので、そもそも問題にならない（一番現実的）</li>
+              <li>アライナー装着中は歯面が覆われ、水を飲んでもフッ素が直接洗い流されにくい</li>
+            </ul>
+            <p>我慢して脱水気味になるほうがマイナス。口が渇いたら水は普通に飲んでOK（矯正中は口腔が乾きやすく、むしろ水分は取ったほうがいい）。避けるべきは、その2時間に<b>糖分・お酒・炭酸</b>を入れること。</p>
+          </details>
+
+          <!-- フッ素洗口の項目は一旦非表示
+          <details>
+            <summary>💧 フッ素洗口とは（イエテボリ式とは別物）</summary>
+            <p>フッ化物入りの水溶液を口に含み、30秒〜1分ブクブクして吐き出す予防法。歯磨き後の「水でゆすぐ」うがいとは全く別で、フッ素そのものを口に行き渡らせるのが目的。</p>
+            <ul>
+              <li>週1回法（900ppm前後）と毎日法（225〜250ppm）の2種</li>
+              <li>虫歯抑制率はおおむね<b>30〜50%</b></li>
+              <li>市販の洗口液（ミラノール等）で個人でも可。うがいができる<b>4歳以上</b>が対象</li>
+            </ul>
+          </details>
+          -->
+
+          <details>
+            <summary>🦿 インビザライン中の注意（イエテボリ式と好相性）</summary>
+            <p>アライナー装着中は歯面が覆われ、唾液の自浄作用・再石灰化が届きにくく<b>虫歯リスクが上がる期間</b>。フッ素を残す方法がこの弱点を補い、磨いた後フッ素を残して装着すると<b>フッ素トレーのような働き</b>になる。「2時間飲食しない」も長時間装着と両立しやすい。</p>
+            <ol>
+              <li><b>着色するタイプは避ける</b> — スズフッ化物や色付き洗口液はアライナー着色。フッ化ナトリウム（NaF）配合の一般的なものを選ぶ</li>
+              <li><b>アライナーを歯磨き粉で洗わない</b> — 研磨剤で傷・白濁。水か専用洗浄剤＋柔らかいブラシで。お湯厳禁（変形）</li>
+              <li><b>装着前は必ず磨く</b> — 汚れ・糖分を閉じ込めて数時間覆うのが最悪</li>
+              <li><b>アタッチメント周囲が最大の弱点</b> — 歯垢が溜まり、外した後に脱灰（白斑）が残ることも。意識的に磨く</li>
+            </ol>
+            <p><b>優先順位：</b>矯正中はフロスの重要度がさらにUP。<b>「フロス → 磨く → フッ素を残す → 装着」</b>を夜だけでも固定するとリスクを抑えられる。<br>※担当医が独自の指示（特定の洗口剤の指定など）を出している場合はそちらが優先。次回調整時に「フッ素を残す磨き方をしていいか」を一言確認すると確実。</p>
+          </details>
+
+        </div>
+      </details>
+
+      <label class="chk"><input type="checkbox" data-id="n8"><span class="box"></span>
+        <span class="txt">👃 綿棒で鼻を掃除 → 鼻・唇にワセリン<span style="color:var(--sub);font-size:.8rem;">（鼻炎予防）</span></span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n9"><span class="box"></span>
+        <span class="txt">💋 唇パック<span style="color:var(--sub);font-size:.8rem;">（唇ケア）</span></span></label>
+    </div>
+
+    <!-- 柔軟・ストレッチ。既定は畳んだ状態で毎日表示する -->
+    <div class="block" id="stretchBlock" style="display:none;">
+      <!-- 稼働が少ないので既定は畳んでおく。開いた状態は端末に記憶する -->
+      <details class="fold" id="stretchFold">
+      <summary class="ttl">🧘 柔軟・ストレッチ（ボルダリング強化）</summary>
+      <div class="purpose"><b>🎯 目的：</b>ボルダリングのパフォーマンスUP。柔軟性と可動域を広げて、ムーブの幅を増やし・ケガを予防する。日替わりで1本ずつ。</div>
+      <div class="stretch">
+        <div class="stretch-part" id="stPart">部位</div>
+        <div class="stretch-title" id="stTitle">タイトル</div>
+        <div class="stretch-acct" id="stAcct">アカウント</div>
+        <select class="stretch-select" id="stSelect"></select>
+        <a class="ovice" id="stLink" href="#" target="_blank" rel="noopener" style="background:#3a1620;color:#ff8aa5;border-color:#7a2d3d;">▶️ このストレッチを再生</a>
+      </div>
+      </details>
+    </div>
+
+    <div class="block">
+      <div class="ttl">📋 準備・段取り</div>
+
+      <label class="chk"><input type="checkbox" data-id="n1"><span class="box"></span>
+        <span class="txt">⏰ アラームを <b>5:00</b> にセット・3分タイマーをセット</span></label>
+
+      <!-- oviceログイン確認は一旦非表示
+      <label class="chk"><input type="checkbox" data-id="n2"><span class="box"></span>
+        <span class="txt">💻 oviceにログイン確認・ブックマーク<br>
+          <a class="ovice" href="https://app.ovice.com/ws/libecity-space2/@pos-pn20ne3" target="_blank" rel="noopener">🌊 もくもく会専用スペースを開く</a></span></label>
+      -->
+
+      <!-- 単元・記事決めは一旦非表示（本人が自分で管理するため）
+      <label class="chk"><input type="checkbox" data-id="n3"><span class="box"></span>
+        <span class="txt">📘 簿記・<b>明日の単元</b>を決めて動画ページを開いておく
+          <input class="editfield" data-f="boki" placeholder="例：単元9 貸倒引当金の設定"></span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n4"><span class="box"></span>
+        <span class="txt">✍️ 明朝書く<b>ブログ記事を1つ決めて</b>おく
+          <input class="editfield" data-f="blog" placeholder="例：◯◯のレビュー記事の導入部分"></span></label>
+      -->
+
+      <label class="chk"><input type="checkbox" data-id="n10"><span class="box"></span>
+        <span class="txt">📊 習慣トラッカーに記入<br>
+          <a class="ovice" href="https://docs.google.com/spreadsheets/d/1VPdFINwRq_cYLDH-B6SppGARStnGrxXEaf7BXUUc0t8/edit?gid=876927102#gid=876927102" target="_blank" rel="noopener" style="background:#0d3320;color:#7ce0a0;border-color:#1d5a38;">📈 トラッカーを開く</a></span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n11"><span class="box"></span>
+        <span class="txt">🗓 明日の段取りを確認 → タップして開く
+          <span class="btnrow">
+            <a class="ovice" href="https://weather.yahoo.co.jp/weather/jp/13/4410/13104.html" target="_blank" rel="noopener" style="background:#3a2d52;color:#c8b3f0;border-color:#54447a;">☀️ 天気</a>
+            <a class="ovice" href="https://calendar.notion.so/" target="_blank" rel="noopener" style="background:#3a2d52;color:#c8b3f0;border-color:#54447a;">📅 カレンダー</a>
+            <a class="ovice" href="https://app.todoist.com/app/upcoming" target="_blank" rel="noopener" style="background:#3a2d52;color:#c8b3f0;border-color:#54447a;">✅ Todoist</a>
+            <!-- デイプランナーの「組む」タブを明日の日付で開く（このページは段取りアプリの中に埋め込まれているので _top で開く） -->
+            <a class="ovice" href="https://mizu-uki.github.io/schedule/?tab=p&amp;day=next" target="_top" style="background:#4a3a7a;color:#ddd0ff;border-color:#6b57a8;">✏️ 明日を組む</a>
+          </span></span></label>
+    </div>
+
+    <div class="block">
+      <div class="ttl">☀️ 早起きのメリットを確認</div>
+      <div class="purpose"><b>🎯 目的：</b>寝る前に「なぜ早起きするのか」を再確認して、明朝のモチベを仕込んでおく。</div>
+      <details class="merits" style="margin:4px 0 10px;">
+        <summary>☀️ 早起きのメリット（タップで開く）</summary>
+        <ul class="merits-list"></ul>
+      </details>
+      <label class="chk"><input type="checkbox" data-id="n17"><span class="box"></span><span class="txt">☀️ 早起きのメリットを確認した</span></label>
+    </div>
+
+    <div class="block">
+      <div class="ttl">🛏 就寝直前（22:00頃）</div>
+
+      <label class="chk"><input type="checkbox" data-id="n12"><span class="box"></span>
+        <span class="txt">📱 iPhoneを<b>格納Boxへ</b>しまう<span style="color:var(--sub);font-size:.8rem;">（視覚情報を遮断）</span></span></label>
+
+      <label class="chk"><input type="checkbox" data-id="n19"><span class="box"></span>
+        <span class="txt">🎧 <b>AirPodsを装着・ブラウンノイズ再生</b><span style="color:var(--sub);font-size:.8rem;">（聴覚情報を遮断）</span></span></label>
+
+      <!-- 「今」に意識を向ける項目は一旦非表示
+      <label class="chk"><input type="checkbox" data-id="n18"><span class="box"></span>
+        <span class="txt">🧘 <b>「今」に意識を向ける</b><span style="color:var(--sub);font-size:.8rem;">（過去・未来ではなく今 → 内臓感覚・呼吸・心臓の鼓動を感じる）</span></span></label>
+      -->
+
+      <!-- ベッドイン時刻は見出しの「（22:00頃）」に集約したので非表示
+      <label class="chk"><input type="checkbox" data-id="n5"><span class="box"></span>
+        <span class="txt">🛏 <b>22:00にベッドイン</b></span></label>
+      -->
+    </div>
+  </section>
+
+  <!-- ========== 明朝 ========== -->
+  <section id="morning">
+
+    <div class="block">
+      <div class="time">5:00 起床</div>
+      <div class="ttl">🛏 ベッド・布団から脱出</div>
+      <div class="purpose"><b>🎯 目的：</b>二度寝の最大の壁＝布団の中。まず物理的に布団から出れば勝ち。考えずに体を動かす。</div>
+      <label class="chk"><input type="checkbox" data-id="m0a"><span class="box"></span><span class="txt">🧘 床（ヨガマット）に移動</span></label>
+      <label class="chk"><input type="checkbox" data-id="m0b"><span class="box"></span><span class="txt">⏰ 3分タイマーで起床</span></label>
+    </div>
+
+    <div class="block">
+      <div class="time">5:00 – 5:15</div>
+      <div class="ttl">🛏 起動 ＆ もくもく会に接続</div>
+      <div class="purpose"><b>🎯 目的：</b>体と頭を完全に起こして「集中モード」に入る。もくもく会に接続すれば、一人だとダラけても“人がいる場所”の力で自然に手が動く。</div>
+      <div class="first" style="margin-top:8px;"><span class="k">🔑 最初の一手：</span>まず綿棒で鼻ケアから。考えない。</div>
+      <!-- 顔を洗う項目は一旦非表示
+      <label class="chk"><input type="checkbox" data-id="m1b"><span class="box"></span><span class="txt">顔を洗う・水1杯・光を浴びる</span></label>
+      -->
+      <label class="chk"><input type="checkbox" data-id="m1c"><span class="box"></span><span class="txt">👃 綿棒で鼻を掃除 → 鼻・唇にワセリン<span style="color:var(--sub);font-size:.8rem;">（鼻炎予防）</span></span></label>
+      <label class="chk"><input type="checkbox" data-id="m1d"><span class="box"></span><span class="txt">🤸 ウォーミングアップ（動的ストレッチ）<span style="color:var(--sub);font-size:.8rem;">（血行促進・目を覚ます）</span><br>
+        <a class="ovice" href="https://www.youtube.com/watch?v=SGPBSqxKGAc&list=WL&index=1" target="_blank" rel="noopener" style="background:#3a1620;color:#ff8aa5;border-color:#7a2d3d;">📻 ラジオ体操を再生（YouTube）</a></span></label>
+      <label class="chk"><input type="checkbox" data-id="m1a"><span class="box"></span><span class="txt">oviceに接続した</span></label>
+      <a class="ovice" href="https://app.ovice.com/ws/libecity-space2/@pos-pn20ne3" target="_blank" rel="noopener" style="margin:8px 0 4px 37px;">🌊 もくもく会専用スペースに接続</a>
+    </div>
+
+    <div class="block">
+      <div class="time">5:15 – 6:30</div>
+      <div class="ttl">📘 簿記2級・<span class="fieldval" data-f="boki">今日の単元</span></div>
+      <div class="purpose"><b>🎯 目的：</b>経理転職に向けた“武器”を増やす時間。ただ見るのではなく「実務で使う知識を仕入れている」意識で。冴えた朝イチを最重要科目に。</div>
+      <div class="first"><span class="k">🔑 最初の一手：</span>座って教材を開き、動画を再生。</div>
+      <div class="note"><span>講義を視聴（〜6:00 / 約40分）</span><span>関連問題を解く（6:00〜6:30 / 直後アウトプットで定着）</span></div>
+      <label class="chk"><input type="checkbox" data-id="m2a"><span class="box"></span><span class="txt">📘 簿記2級をやった</span></label>
+    </div>
+
+    <!-- 時刻は入れていない（簿記の終わり6:30とブログ開始7:00に挟まれて数字が合わないため）。
+         順番だけ守る：50分作業 → 朝食 → ブログ執筆 -->
+    <div class="block">
+      <div class="ttl">⏱ 50分 作業（締切効果）</div>
+      <div class="purpose"><b>🎯 目的：</b>「50分で終わらせる」と締切を切ると、同じ作業でも集中が段違いになる。長さより区切りが効く。</div>
+      <div class="first"><span class="k">🔑 最初の一手：</span>50分のタイマーをかけてから、作業を開く。</div>
+      <label class="chk"><input type="checkbox" data-id="m5a"><span class="box"></span><span class="txt">⏱ <b>50分 作業した</b></span></label>
+    </div>
+
+    <div class="block">
+      <div class="ttl">🍞 朝食</div>
+      <div class="purpose"><b>🎯 目的：</b>作業を切り上げる合図。ここで一度手を止めて燃料を入れる。</div>
+      <label class="chk"><input type="checkbox" data-id="m6a"><span class="box"></span><span class="txt">🍞 <b>朝食を食べた</b></span></label>
+    </div>
+
+    <!-- バッファは一旦非表示（本人が自分で時間調整するため）
+    <div class="block">
+      <div class="time">6:30 – 7:00</div>
+      <div class="ttl">☕ バッファ</div>
+      <div class="purpose"><b>🎯 目的：</b>詰め込みすぎない“あそび”の確保。ここがあるから計画が崩れない。会はここで退出してOK。</div>
+      <div class="note"><span>朝食・コーヒー・軽くストレッチ・予備時間</span></div>
+      <label class="chk"><input type="checkbox" data-id="m3"><span class="box"></span><span class="txt">☕ ひと休みした</span></label>
+    </div>
+    -->
+
+    <div class="block">
+      <div class="time">7:00 – 8:00</div>
+      <div class="ttl">✍️ ブログ執筆：<span class="fieldval" data-f="blog">今日の記事</span></div>
+      <div class="purpose"><b>🎯 目的：</b>将来の収入の柱を毎日少しずつ積む。完成させなくていい。「今日も1ブロック前進した」事実が続ける力になる。</div>
+      <div class="first"><span class="k">🔑 最初の一手：</span>エディタを開いて、見出し（H2）を3つ書き出す。</div>
+      <div class="note"><span>見出しを3つ書き出す</span><span>1セクション書き切る（目標）</span></div>
+      <label class="chk"><input type="checkbox" data-id="m4a"><span class="box"></span><span class="txt">✍️ ブログを書いた</span></label>
+    </div>
+
+    <div class="block" style="text-align:center; color:var(--green); font-weight:700;">
+      🎉 8:00 EC業務スタンバイ完了!
+    </div>
+  </section>
+
+  <div class="progress" id="progress"></div>
+  <div class="resetbar">
+    <button class="reset" id="reset">↺ チェックをリセット（翌日用）</button>
+  </div>
+</div>
+
+<script>
+  // 日付表示
+  var d=new Date();
+  var w=['日','月','火','水','木','金','土'];
+  document.getElementById('today').textContent =
+    d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日('+w[d.getDay()]+')';
+
+  // 早起きのメリット（1か所で定義 → 上部と前夜タブ末尾の両方に流し込む）
+  var MERITS=[
+    '🧠 <b>朝は脳のゴールデンタイム。</b>集中力が一番高く、勉強・副業が最もはかどる',
+    '🤫 <b>誰にも邪魔されない</b>静かな自分時間が手に入る',
+    '🌱 簿記・副業が毎日進み、<b>将来の選択肢（収入・転職）が広がる</b>',
+    '☀️ 朝日を浴びて<b>セロトニン分泌</b> → 気分が安定し、夜の寝つきも良くなる',
+    '⏰ 一日を<b>余裕を持って</b>始められる。バタバタしない',
+    '💪 「早起きできた」という小さな成功が<b>自己肯定感</b>を上げる'
+  ];
+  document.querySelectorAll('.merits-list').forEach(function(ul){
+    ul.innerHTML=MERITS.map(function(m){ return '<li>'+m+'</li>'; }).join('');
+  });
+
+
+  // ストレッチ枠の開閉を覚えておく（既定は閉じたまま）
+  (function(){
+    var f = document.getElementById('stretchFold');
+    if(!f) return;
+    try{ if(localStorage.getItem('stretchOpen') === '1') f.open = true; }catch(e){}
+    f.addEventListener('toggle', function(){
+      try{ localStorage.setItem('stretchOpen', f.open ? '1' : '0'); }catch(e){}
+    });
+  })();
+
+  // タブ切替
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+      document.querySelectorAll('section').forEach(function(s){s.classList.remove('show');});
+      t.classList.add('active');
+      document.getElementById(t.dataset.t).classList.add('show');
+    });
+  });
+
+  // 時間帯でタブを自動切替（4〜11時に開いたら朝タブ、それ以外は前夜タブ）
+  var h=new Date().getHours();
+  if(h>=4&&h<12){ document.querySelector('.tab[data-t="morning"]').click(); }
+
+  // ストレッチブロックは毎日表示する（畳んであるので邪魔にならない）
+  (function(){
+    var blk=document.getElementById('stretchBlock');
+    if(blk) blk.style.display='';
+  })();
+
+  // チェック状態の保存・復元（午前4時を境に自動リセット＝朝はまっさらで開始）
+  // 前夜の準備チェックも4時に消える。5時起床時には常にリセット済みの状態になる
+  var KEY='morningPlanState';
+  var boxes=document.querySelectorAll('input[type=checkbox]');
+  function dayKey(){
+    var n=new Date();
+    if(n.getHours()<4) n.setDate(n.getDate()-1); // 午前4時前は前日サイクル扱い
+    return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate();
+  }
+  function load(){
+    var s={};
+    try{ s=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){}
+    if(s.day!==dayKey()) s={day:dayKey(),checks:{}}; // 新しいサイクル → 自動リセット
+    var c=s.checks||{};
+    boxes.forEach(function(b){ b.checked=!!c[b.dataset.id]; });
+    updateProgress();
+  }
+  function save(){
+    var s={day:dayKey(),checks:{}};
+    boxes.forEach(function(b){ if(b.checked) s.checks[b.dataset.id]=1; });
+    localStorage.setItem(KEY,JSON.stringify(s));
+  }
+  function updateProgress(){
+    var done=0; boxes.forEach(function(b){ if(b.checked) done++; });
+    document.getElementById('progress').textContent='達成 '+done+' / '+boxes.length;
+  }
+  boxes.forEach(function(b){
+    b.addEventListener('change',function(){ save(); updateProgress(); });
+  });
+  document.getElementById('reset').addEventListener('click',function(){
+    if(confirm('チェックを全部リセットしますか?')){
+      localStorage.removeItem(KEY);
+      boxes.forEach(function(b){ b.checked=false; });
+      updateProgress();
+    }
+  });
+  load();
+
+  // 単元・記事の書き換え欄（前夜タブで記入 → 朝タブのタイトルに反映。日をまたいでも残る）
+  var FKEY='morningPlanFields';
+  function readF(){ try{ return JSON.parse(localStorage.getItem(FKEY)||'{}'); }catch(e){ return {}; } }
+  function updateSpans(){
+    var f=readF();
+    document.querySelectorAll('span.fieldval').forEach(function(sp){
+      sp.textContent=f[sp.dataset.f]||'（前夜タブで記入）';
+    });
+  }
+  var fields=document.querySelectorAll('input.editfield');
+  var f0=readF();
+  if(f0.boki==null){ // 初回だけ今夜ぶんをプリセット
+    f0.boki='単元9 金銭債権債務⑤（貸倒引当金の設定）';
+    localStorage.setItem(FKEY,JSON.stringify(f0));
+  }
+  fields.forEach(function(i){
+    if(f0[i.dataset.f]) i.value=f0[i.dataset.f];
+    // ラベル内のテキスト入力でチェックが切り替わらないようにする
+    i.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); i.focus(); });
+    i.addEventListener('input',function(){
+      var f=readF(); f[i.dataset.f]=i.value;
+      localStorage.setItem(FKEY,JSON.stringify(f));
+      updateSpans();
+    });
+  });
+  updateSpans();
+
+  // 夜の柔軟・ストレッチ（日替わり1本／ボルダリング強化）
+  var STRETCH=[
+    {part:'股関節・尻', acct:'tomiryu', title:'下半身全体を柔らかくする万能ストレッチ（10分）', id:'g9BT8ZpR0as'},
+    {part:'背骨', acct:'パーソナルトレーナー丈【ジョー】', title:'体の硬い人はまずコレ！4分でフニャフニャに', id:'JFG7N53O8CM'},
+    {part:'股関節・尻', acct:'パーソナルトレーナー丈【ジョー】', title:'超硬い人向け ガチガチ股関節が柔らかくなる（10分）', id:'fvvlWWArePc'},
+    {part:'筋膜リリース', acct:'リリースハウス', title:'全身フォームローラールーティン（22分）', id:'XQtnx6U-D4g'},
+    {part:'反り腰', acct:'オガトレ', title:'反り腰をしっかり解消するストレッチ', id:'IPvnqtokBMk'},
+    {part:'上半身', acct:'tomiryu', title:'上半身ストレッチ（6分）疲労回復・リラックス', id:'Rj0C1YvpRMU'},
+    {part:'股関節・尻', acct:'JapaneseYOGA', title:'股関節を柔らかくする10分ヨガ', id:'QZ2D41RX8pQ'},
+    {part:'首', acct:'美容整体アピアランスTV', title:'ストレートネック・首こり肩こり解消', id:'nT-Z9U7XH94'},
+    {part:'筋膜リリース', acct:'オガトレ', title:'ボール1つで背中〜お尻のコリをほぐす（5分）', id:'w0L6plNnuig'},
+    {part:'肩甲骨', acct:'オガトレ', title:'肩甲骨が超硬い人向け 柔らかくなるストレッチ', id:'ZYTlwh_FhoU'},
+    {part:'上半身', acct:'クライミングアップ', title:'【ボルダリング】自宅でできる上半身のストレッチ！11種目10分', id:'vQg0Wuacap0'}
+  ];
+  function stretchDayNum(){
+    var n=new Date();
+    if(n.getHours()<4) n.setDate(n.getDate()-1); // 午前4時を境に翌日扱い（チェックのリセットと統一）
+    return Math.floor(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())/86400000);
+  }
+  function autoIndex(){ return ((stretchDayNum()%STRETCH.length)+STRETCH.length)%STRETCH.length; }
+  var PKEY='stretchPick';
+  function readPick(){
+    try{ var p=JSON.parse(localStorage.getItem(PKEY)||'{}'); if(p.day===dayKey()) return p.sel; }catch(e){}
+    return 'auto'; // 新しい日 → 今日のおすすめに戻る
+  }
+  var stSel=document.getElementById('stSelect');
+  if(stSel){ // ストレッチブロックが表示されているときだけ動作（非表示でもエラーにしない）
+    // プルダウンに「今日のおすすめ」＋全本を流し込む
+    stSel.innerHTML='<option value="auto">📅 今日のおすすめ（日替わり）</option>'+
+      STRETCH.map(function(v,i){ return '<option value="'+i+'">💪 '+v.part+'：'+v.title+'</option>'; }).join('');
+    var renderStretch=function(){
+      var sel=readPick();
+      var idx = sel==='auto' ? autoIndex() : (parseInt(sel,10)||0);
+      var v=STRETCH[idx];
+      document.getElementById('stPart').textContent='💪 '+v.part;
+      document.getElementById('stTitle').textContent=v.title;
+      document.getElementById('stAcct').textContent=v.acct;
+      document.getElementById('stLink').href='https://www.youtube.com/watch?v='+v.id;
+      stSel.value=sel; // プルダウンの表示を現在の選択に同期
+    };
+    stSel.addEventListener('change',function(){
+      localStorage.setItem(PKEY,JSON.stringify({day:dayKey(),sel:stSel.value}));
+      renderStretch();
+    });
+    renderStretch();
+  }
+
+  // 朝の自動リロード（最新版＆当日表示にする）
+  // ① 開いたまま朝を迎えたら 4:00 に一度リロード
+  // ② 一度閉じて再び開いたとき、前回読み込みから「日付サイクル」が変わっていたらリロード
+  //    （チェックはlocalStorage保存なので消えません）
+  (function(){
+    var loadedAt=new Date();
+    // 4時起点で「その日」を判定（4時前は前日扱い）
+    function cycleDay(dt){ var x=new Date(dt); if(x.getHours()<4) x.setDate(x.getDate()-1); return x.toDateString(); }
+    // ① 次の 4:00:05 までの残り時間でリロードを予約
+    function msUntil4am(){
+      var n=new Date();
+      var t=new Date(n.getFullYear(),n.getMonth(),n.getDate(),4,0,5,0);
+      if(n>=t) t.setDate(t.getDate()+1);
+      return t-n;
+    }
+    setTimeout(function(){ location.reload(); }, msUntil4am());
+    // ② 復帰時：日付サイクルが変わっていたら最新化
+    function maybeRefresh(){
+      if(document.visibilityState!=='visible') return;
+      if(cycleDay(loadedAt)!==cycleDay(new Date())) location.reload();
+    }
+    document.addEventListener('visibilitychange', maybeRefresh);
+    window.addEventListener('pageshow', maybeRefresh);
+  })();
+
+  // サービスワーカーはシェル（index.html）が登録するので、ここでは何もしない
+</script>
+</body>
+</html>

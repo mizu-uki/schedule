@@ -2,12 +2,12 @@
 <!--
   統合シェル（タブの器）。ここは原則いじらない。
   1日の流れ順に3タブ：
-    🌅明朝  = morning-routine の内部タブ "morning"
+    🌅明朝  = morning.html の内部タブ "morning"
     ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
-    🌙前夜  = morning-routine の内部タブ "night"
+    🌙前夜  = morning.html の内部タブ "night"
   ※かつてあった「今日の予定」タブ（today.html のチェックリスト）は
     組むタブと役割が重複するため廃止。today.html 自体は残してある。
-  morning-routine は同一オリジンなので、iframe内のタブを直接クリックし、
+  チェックリスト本体は同リポジトリの morning.html（同一オリジン）。iframe内のタブを直接クリックし、
   内部のタブバーは隠してタブの二重表示をなくしている。
   （もし向こうのDOM構造が変わっても、隠せないだけで壊れないようにしてある）
 -->
@@ -75,7 +75,8 @@
   <span class="left" id="left" title="今日の22:00までの残り時間"></span>
 </div>
 <div class="panes">
-  <iframe id="fM" title="朝ルーティン" src="https://mizu-uki.github.io/morning-routine/"></iframe>
+  <!-- src は JS から付与（morning.html も更新が即反映されるように） -->
+  <iframe id="fM" title="朝ルーティン"></iframe>
   <!-- src は JS から付与（plan.html も更新が即反映されるように） -->
   <iframe id="fP" title="デイプランナー"></iframe>
 </div>
@@ -93,14 +94,15 @@
     planQ += '&date=' + encodeURIComponent(Q.get('date'));
   }
   fP.src = planQ;                          // 10分キャッシュで古い版が動くのを防ぐ
+  fM.src = 'morning.html?t=' + Date.now(); // 同上。チェックリストも同じリポジトリの morning.html が正
   var BTN = { m: document.getElementById('tabM'),
               p: document.getElementById('tabP'),
               n: document.getElementById('tabN') };
-  var INNER = { m: 'morning', n: 'night' };   // morning-routine 側の data-t
+  var INNER = { m: 'morning', n: 'night' };   // morning.html 側の data-t
   var KEY = 'shell-tab';
   var wanted = null;   // 朝アプリで表示したい内部タブ
 
-  // 「今日の予定」タブと重複するブロックは朝タブ側で隠す（埋め込み時のみ。朝アプリ単体には影響しない）
+  // 「今日の予定」タブと重複するブロックは朝タブ側で隠す（埋め込み時のみ。morning.html 単体では出る）
   //   m2a = 簿記2級（→ 予定タブの「資格勉強120分」）
   //   m4a = ブログ執筆（→ 予定タブの「ブログ記事執筆」）
   var DUP = ['m2a', 'm4a'];

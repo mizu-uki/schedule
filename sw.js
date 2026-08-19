@@ -15,7 +15,8 @@ self.addEventListener('fetch', function(e){
 
   var isDoc = req.mode === 'navigate';                    // index.html 本体
   var isApp = req.url.indexOf('today.html') !== -1 ||      // 日々差し替わる予定
-              req.url.indexOf('plan.html')  !== -1;       // プランナー本体（更新が多い）
+              req.url.indexOf('plan.html')  !== -1 ||      // プランナー本体（更新が多い）
+              req.url.indexOf('morning.html') !== -1;     // 明朝／前夜のチェックリスト本体
   if(!isDoc && !isApp) return;                            // それ以外は既定動作
 
   // cache:'no-store' で HTTP キャッシュを迂回して取り直す。
