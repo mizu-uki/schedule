@@ -160,6 +160,8 @@
       try{ localStorage.setItem(KEY, JSON.stringify({d: today(), t: which})); }catch(e){}
     }
   }
+  // 中身（morning.html）からタブを切り替えられるように公開する
+  window.showTab = show;
   BTN.m.addEventListener('click', function(){ show('m', true); });
   BTN.p.addEventListener('click', function(){ show('p', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });

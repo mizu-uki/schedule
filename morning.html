@@ -415,9 +415,14 @@
             <a class="ovice" href="https://weather.yahoo.co.jp/weather/jp/13/4410/13104.html" target="_blank" rel="noopener" style="background:#3a2d52;color:#c8b3f0;border-color:#54447a;">☀️ 天気</a>
             <a class="ovice" href="https://calendar.notion.so/" target="_blank" rel="noopener" style="background:#3a2d52;color:#c8b3f0;border-color:#54447a;">📅 カレンダー</a>
             <a class="ovice" href="https://app.todoist.com/app/upcoming" target="_blank" rel="noopener" style="background:#3a2d52;color:#c8b3f0;border-color:#54447a;">✅ Todoist</a>
-            <!-- デイプランナーの「組む」タブを明日の日付で開く（このページは段取りアプリの中に埋め込まれているので _top で開く） -->
-            <a class="ovice" href="https://mizu-uki.github.io/schedule/?tab=p&amp;day=next" target="_top" style="background:#4a3a7a;color:#ddd0ff;border-color:#6b57a8;">✏️ 明日を組む</a>
           </span></span></label>
+
+      <!-- 寝る前に明朝の流れを一度なぞるためのボタン。明朝タブへ切り替えるだけで、チェックには触らない。
+           ラベルの外に置いているのは、中に入れると押したときに上のチェックまで入ってしまうため。 -->
+      <div class="btnrow" style="margin:4px 4px 12px;">
+        <a class="ovice" href="#" id="toMorning"
+           style="background:#3a2f16;color:#f0d6a8;border-color:#7a5f36;">🌅 「明朝」ルーティンを確認</a>
+      </div>
     </div>
 
     <div class="block">
@@ -563,6 +568,26 @@
   })();
 
   // タブ切替
+  // 「明朝」ルーティンを確認ボタン
+  (function(){
+    var b=document.getElementById('toMorning');
+    if(!b) return;
+    b.addEventListener('click',function(e){
+      e.preventDefault();
+      try{
+        // シェル（index.html）の中にいるなら、シェル側のタブごと切り替える（見出しのハイライトを合わせるため）
+        if(window.parent !== window && typeof window.parent.showTab === 'function'){
+          window.parent.showTab('m', true);
+          window.scrollTo(0,0);
+          return;
+        }
+      }catch(err){}                       // 別オリジンで開かれた場合などは内部タブだけ切り替える
+      var t=document.querySelector('.tab[data-t="morning"]');
+      if(t) t.click();
+      window.scrollTo(0,0);
+    });
+  })();
+
   document.querySelectorAll('.tab').forEach(function(t){
     t.addEventListener('click',function(){
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
