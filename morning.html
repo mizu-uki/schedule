@@ -502,7 +502,7 @@
 
     <div class="block">
       <div class="ttl">🍞 朝食</div>
-      <div class="purpose"><b>🎯 目的：</b>作業を切り上げる合図。ここで一度手を止めて燃料を入れる。</div>
+      <div class="purpose"><b>🎯 目的：</b>作業を切り上げる合図。あわせて<b>バルクアップの1食</b>——たんぱく質＋炭水化物をここで入れて、ジムでかけた負荷を筋肉に変える材料を切らさない。朝抜くと分解に回る。</div>
       <label class="chk"><input type="checkbox" data-id="m6a"><span class="box"></span><span class="txt">🍞 <b>朝食を食べた</b></span></label>
     </div>
 
@@ -607,26 +607,45 @@
     if(blk) blk.style.display='';
   })();
 
-  // チェック状態の保存・復元（午前4時を境に自動リセット＝朝はまっさらで開始）
-  // 前夜の準備チェックも4時に消える。5時起床時には常にリセット済みの状態になる
+  /* チェック状態の保存・復元。リセットの区切りはセクションごとに変える。
+       明朝 = 15:00 起点 … 日中は見返せるように残し、15時に消えて夜の画面がまっさらになる
+       前夜 = 4:00 起点  … 5時起床時にまっさらで始めるため（夜中に付けた分は朝まで残す）
+     保存は {m:{day,checks}, n:{day,checks}} の形。旧形式（明朝・前夜ひとまとめ）からは自動移行する。 */
   var KEY='morningPlanState';
   var boxes=document.querySelectorAll('input[type=checkbox]');
-  function dayKey(){
+  var BOUND={m:15, n:4};                       // セクションごとの日替わり時刻
+  function cycleKey(h){
     var n=new Date();
-    if(n.getHours()<4) n.setDate(n.getDate()-1); // 午前4時前は前日サイクル扱い
+    if(n.getHours()<h) n.setDate(n.getDate()-1); // その時刻より前は前日サイクル扱い
     return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate();
   }
-  function load(){
+  function dayKey(){ return cycleKey(4); }     // 他の機能（ストレッチ選択など）は従来どおり4時起点
+  function sectionOf(b){                       // どちらのタブの項目か
+    var sec=b.closest('section');
+    return (sec && sec.id==='morning') ? 'm' : 'n';
+  }
+  function readState(){
     var s={};
     try{ s=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){}
-    if(s.day!==dayKey()) s={day:dayKey(),checks:{}}; // 新しいサイクル → 自動リセット
-    var c=s.checks||{};
-    boxes.forEach(function(b){ b.checked=!!c[b.dataset.id]; });
+    if(s.checks){                              // 旧形式 → 明朝・前夜に複製して引き継ぐ
+      s={m:{day:s.day,checks:s.checks}, n:{day:s.day,checks:s.checks}};
+    }
+    ['m','n'].forEach(function(k){
+      var cur=cycleKey(BOUND[k]);
+      if(!s[k] || s[k].day!==cur) s[k]={day:cur,checks:{}};   // サイクルが変わっていたら自動リセット
+    });
+    return s;
+  }
+  function load(){
+    var s=readState();
+    boxes.forEach(function(b){ b.checked=!!s[sectionOf(b)].checks[b.dataset.id]; });
+    localStorage.setItem(KEY,JSON.stringify(s));   // リセットが起きていた場合はここで確定させる
     updateProgress();
   }
   function save(){
-    var s={day:dayKey(),checks:{}};
-    boxes.forEach(function(b){ if(b.checked) s.checks[b.dataset.id]=1; });
+    var s=readState();
+    s.m.checks={}; s.n.checks={};
+    boxes.forEach(function(b){ if(b.checked) s[sectionOf(b)].checks[b.dataset.id]=1; });
     localStorage.setItem(KEY,JSON.stringify(s));
   }
   function updateProgress(){
@@ -725,20 +744,25 @@
   //    （チェックはlocalStorage保存なので消えません）
   (function(){
     var loadedAt=new Date();
-    // 4時起点で「その日」を判定（4時前は前日扱い）
-    function cycleDay(dt){ var x=new Date(dt); if(x.getHours()<4) x.setDate(x.getDate()-1); return x.toDateString(); }
-    // ① 次の 4:00:05 までの残り時間でリロードを予約
-    function msUntil4am(){
-      var n=new Date();
-      var t=new Date(n.getFullYear(),n.getMonth(),n.getDate(),4,0,5,0);
-      if(n>=t) t.setDate(t.getDate()+1);
-      return t-n;
+    // 「その日」の判定は4時起点（4時前は前日扱い）と15時起点の2本立て。
+    // 前者が前夜のリセット、後者が明朝のリセットに対応する。
+    function cycleDay(dt,h){ var x=new Date(dt); if(x.getHours()<h) x.setDate(x.getDate()-1); return x.toDateString()+'@'+h; }
+    function stamp(dt){ return cycleDay(dt,4)+'/'+cycleDay(dt,15); }
+    // ① 次の区切り（4:00:05 か 15:00:05 の早いほう）でリロードを予約
+    function msUntilNext(){
+      var n=new Date(), best=Infinity;
+      [4,15].forEach(function(h){
+        var t=new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,0,5,0);
+        if(n>=t) t.setDate(t.getDate()+1);
+        best=Math.min(best, t-n);
+      });
+      return best;
     }
-    setTimeout(function(){ location.reload(); }, msUntil4am());
+    setTimeout(function(){ location.reload(); }, msUntilNext());
     // ② 復帰時：日付サイクルが変わっていたら最新化
     function maybeRefresh(){
       if(document.visibilityState!=='visible') return;
-      if(cycleDay(loadedAt)!==cycleDay(new Date())) location.reload();
+      if(stamp(loadedAt)!==stamp(new Date())) location.reload();
     }
     document.addEventListener('visibilitychange', maybeRefresh);
     window.addEventListener('pageshow', maybeRefresh);
