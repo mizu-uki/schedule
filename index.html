@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <!--
   統合シェル（タブの器）。ここは原則いじらない。
-  1日の流れ順に3タブ：
+  タブは明朝／前夜の2つ。「組む」は残り時間ボタン（#left）が兼ねる：
     🌅明朝  = morning.html の内部タブ "morning"
-    ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
     🌙前夜  = morning.html の内部タブ "night"
+    ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
+             → 「22:00 まで ○時間○分 ✏️組む」のボタンで開く
   ※かつてあった「今日の予定」タブ（today.html のチェックリスト）は
     組むタブと役割が重複するため廃止。today.html 自体は残してある。
   チェックリスト本体は同リポジトリの morning.html（同一オリジン）。iframe内のタブを直接クリックし、
@@ -42,13 +43,23 @@
     display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px}
   .tabs{display:flex;gap:4px;flex:1 1 auto;max-width:560px;
     background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
-  /* 22時までの残り時間。タブの右（狭い画面では下の行）に常時出す */
-  .left{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  /* 「組む」タブ兼 22時までの残り時間。押すとプランナーが開く。
+     タブ帯の中に3つ並べるより、残り時間そのものを入口にしたほうが目に入る。 */
+  .left{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
     background:rgba(79,140,255,.14);border:1px solid rgba(79,140,255,.45);color:#cfe0ff;
     border-radius:11px;padding:8px 13px;font-size:12.5px;font-weight:700;
-    font-variant-numeric:tabular-nums}
+    font-variant-numeric:tabular-nums;font-family:inherit;cursor:pointer;
+    transition:background .15s,border-color .15s}
   .left b{font-size:15px}
+  /* 何のボタンかを示す小さな札。区切り線を入れて残り時間と読み分けられるようにする */
+  .left .pen{font-size:11px;font-weight:700;opacity:.85;
+    border-left:1px solid currentColor;padding-left:8px}
+  .left:hover{background:rgba(79,140,255,.22)}
+  /* 選択中は紫のリング。色は warn（赤）に上書きされてもリングだけは残る */
+  .left.on{background:rgba(138,99,210,.22);border-color:#8a63d2;color:#e9dcff;
+    box-shadow:0 0 0 2px rgba(138,99,210,.45)}
   .left.warn{background:rgba(255,93,93,.14);border-color:rgba(255,93,93,.5);color:#ffc2c2}
+  .left.warn:hover{background:rgba(255,93,93,.2)}
   @media (max-width:560px){ .left{flex:1 0 100%;justify-content:center} }
   .tab{flex:1 1 0;min-width:0;text-align:center;padding:8px 4px;border:0;
     border-radius:9px;background:transparent;color:var(--sub);font-size:12.5px;font-weight:700;
@@ -57,8 +68,6 @@
   .tab:not(.on):hover{color:var(--text);background:rgba(255,255,255,.05)}
   .tab.on{color:#fff}
   #tabM.on{background:var(--morning)}
-  #tabS.on{background:var(--accent)}
-  #tabP.on{background:#8a63d2}
   #tabN.on{background:var(--night)}
   .panes{flex:1 1 auto;position:relative;min-height:0}
   iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
@@ -69,10 +78,10 @@
 <div class="tabbar">
   <div class="tabs">
     <div class="tab" id="tabM">🌅 明朝</div>
-    <div class="tab" id="tabP">✏️ 組む</div>
     <div class="tab" id="tabN">🌙 前夜</div>
   </div>
-  <span class="left" id="left" title="今日の22:00までの残り時間"></span>
+  <button class="left" id="left" type="button"
+          title="今日の22:00までの残り時間。押すと「組む」（デイプランナー）を開く"></button>
 </div>
 <div class="panes">
   <!-- src は JS から付与（morning.html も更新が即反映されるように） -->
@@ -95,9 +104,11 @@
   }
   fP.src = planQ;                          // 10分キャッシュで古い版が動くのを防ぐ
   fM.src = 'morning.html?t=' + Date.now(); // 同上。チェックリストも同じリポジトリの morning.html が正
-  var BTN = { m: document.getElementById('tabM'),
-              p: document.getElementById('tabP'),
-              n: document.getElementById('tabN') };
+  var BTN = { m: document.getElementById('tabM'),      // 「組む」はタブ帯ではなく
+              n: document.getElementById('tabN') };      // 残り時間のボタン（#left）が担当する
+  var leftEl = document.getElementById('left');
+  var TABS = ['m', 'p', 'n'];                            // 有効なタブ名（これ以外の指定は無視する）
+  var cur = null;                                        // 今どれを見ているか（チップの選択表示に使う）
   var INNER = { m: 'morning', n: 'night' };   // morning.html 側の data-t
   var KEY = 'shell-tab';
   var wanted = null;   // 朝アプリで表示したい内部タブ
@@ -148,6 +159,7 @@
 
 
   function show(which, remember){
+    cur = which;
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
     var useMorning = (which === 'm' || which === 'n');
     fM.classList.toggle('on', useMorning);
@@ -159,12 +171,13 @@
     if(remember){
       try{ localStorage.setItem(KEY, JSON.stringify({d: today(), t: which})); }catch(e){}
     }
+    drawLeft();                    // 残り時間ボタンの選択表示も合わせる
   }
   // 中身（morning.html）からタブを切り替えられるように公開する
   window.showTab = show;
   BTN.m.addEventListener('click', function(){ show('m', true); });
-  BTN.p.addEventListener('click', function(){ show('p', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });
+  leftEl.addEventListener('click', function(){ show('p', true); });
 
   // 初期表示: 同じ日に手動で選んだタブがあればそれを、なければ時刻で判断
   //   4:00–11:59 → 明朝 / 12:00–19:59 → 今日の予定 / 20:00–3:59 → 前夜の準備
@@ -172,10 +185,10 @@
     var pick = null;
     try{
       var s = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if(s && s.d === today() && BTN[s.t]) pick = s.t;   // 廃止したタブは BTN に無いので自動的に無視される
+      if(s && s.d === today() && TABS.indexOf(s.t) >= 0) pick = s.t;   // 廃止したタブ名は無視される
     }catch(e){}
     var forced = Q.get('tab');             // 外部リンクからの指定が最優先
-    if(forced && BTN[forced]) pick = forced;
+    if(forced && TABS.indexOf(forced) >= 0) pick = forced;
     if(!pick){
       var h = new Date().getHours();
       pick = (h >= 4 && h < 12) ? 'm' : (h >= 20 || h < 4) ? 'n' : 'p';
@@ -187,15 +200,19 @@
      （プランナー内の同じ表示は、埋め込み時は二重になるので向こうで隠している） */
   var DAY_END = 22*60;
   function drawLeft(){
-    var el = document.getElementById('left');
+    var el = leftEl;
     var n = new Date(), rest = DAY_END - (n.getHours()*60 + n.getMinutes());
     var over = rest < 0, m = Math.abs(rest);
     var txt = m >= 60 ? Math.floor(m/60)+'時間'+(m%60 ? (m%60)+'分' : '') : m+'分';
-    el.className = 'left' + (rest < 60 ? ' warn' : '');     // 残り1時間を切ったら赤
+    el.className = 'left' + (rest < 60 ? ' warn' : '')      // 残り1時間を切ったら赤
+                          + (cur === 'p' ? ' on' : '');     // 表示中なら選択状態
     el.textContent = '';
     el.appendChild(document.createTextNode(over ? '22:00 から' : '22:00 まで'));
     var b = document.createElement('b'); b.textContent = txt; el.appendChild(b);
     if(over) el.appendChild(document.createTextNode('経過'));
+    var pen = document.createElement('span');               // 何のボタンかを示す札
+    pen.className = 'pen'; pen.textContent = '✏️ 組む';
+    el.appendChild(pen);
   }
   drawLeft();
   setInterval(drawLeft, 30000);
