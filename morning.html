@@ -135,23 +135,6 @@
   .btnrow{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
   .btnrow .ovice{margin-top:0;}
 
-  .stretch{
-    background:var(--card2); border:1px solid var(--line);
-    border-radius:10px; padding:11px 12px; margin-bottom:10px;
-  }
-  .stretch-part{
-    display:inline-block; background:#3a2d52; color:#c8b3f0;
-    font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:20px; margin-bottom:7px;
-  }
-  .stretch-title{font-size:.9rem; font-weight:700; color:var(--text); margin-bottom:3px; line-height:1.4;}
-  .stretch-acct{font-size:.76rem; color:var(--sub); margin-bottom:9px;}
-  .stretch-select{
-    display:block; width:100%; margin-bottom:9px; padding:9px 11px;
-    background:var(--card); border:1px solid var(--line); border-radius:8px;
-    color:var(--text); font-size:.85rem; font-family:inherit;
-  }
-  .stretch-select:focus{outline:none; border-color:var(--accent);}
-
   .editfield{
     display:block; width:100%; margin-top:6px; padding:9px 11px;
     background:var(--card2); border:1px dashed var(--sub); border-radius:8px;
@@ -189,6 +172,22 @@
   .progress{text-align:center; color:var(--sub); font-size:.8rem; margin-top:10px;}
   /* 🧘タブはストレッチだけを見る画面なので、上の見出し・意味・メリットは畳む */
   body.tab-stretch #header{display:none;}
+
+  /* ストレッチ動画リスト。全部出して部位ごとにまとめ、1タップで再生ページへ飛ぶ */
+  .st-group{margin:14px 2px 6px; font-size:.76rem; font-weight:700; color:var(--accent); letter-spacing:.04em;}
+  .st-item{display:flex; gap:10px; align-items:flex-start; padding:10px 11px; margin-bottom:7px;
+    background:var(--card2); border:1px solid var(--line); border-radius:10px;
+    text-decoration:none; color:var(--text);}
+  .st-item:active{background:#2a3542;}
+  .st-item .st-play{flex:0 0 auto; font-size:.95rem; line-height:1.5;}
+  .st-item .st-body{flex:1; min-width:0;}
+  .st-name{font-size:.85rem; font-weight:700; line-height:1.45;}
+  .st-meta{font-size:.73rem; color:var(--sub); margin-top:3px;}
+  /* 迷った日はこれ、の1本だけ別枠で目立たせる */
+  .st-pin{background:linear-gradient(135deg,#1c2733,#241d33); border-color:#3a2d52; padding:12px;}
+  .st-pin .st-name{font-size:.9rem;}
+  .st-badge{display:inline-block; background:#3a2d52; color:#c8b3f0; font-size:.68rem;
+    font-weight:700; padding:2px 9px; border-radius:20px; margin-bottom:7px;}
 </style>
 </head>
 <body>
@@ -455,15 +454,9 @@
     <div class="block" id="stretchBlock" style="display:none;">
       <!-- 稼働が少ないので既定は畳んでおく。開いた状態は端末に記憶する -->
       <details class="fold" id="stretchFold">
-      <summary class="ttl">🧘 柔軟・ストレッチ（ボルダリング強化）</summary>
-      <div class="purpose"><b>🎯 目的：</b>ボルダリングのパフォーマンスUP。柔軟性と可動域を広げて、ムーブの幅を増やし・ケガを予防する。日替わりで1本ずつ。</div>
-      <div class="stretch">
-        <div class="stretch-part" id="stPart">部位</div>
-        <div class="stretch-title" id="stTitle">タイトル</div>
-        <div class="stretch-acct" id="stAcct">アカウント</div>
-        <select class="stretch-select" id="stSelect"></select>
-        <a class="ovice" id="stLink" href="#" target="_blank" rel="noopener" style="background:#3a1620;color:#ff8aa5;border-color:#7a2d3d;">▶️ このストレッチを再生</a>
-      </div>
+      <summary class="ttl">🧘 柔軟・ストレッチ（筋トレの土台づくり）</summary>
+      <div class="purpose"><b>🎯 目的：</b>筋トレの効きを上げる土台づくり。可動域が広がるとフォームが正しく取れて効かせやすく、疲れも残りにくい。ケガの予防にもなる。</div>
+      <div id="stList"></div>
       </details>
     </div>
   </section>
@@ -637,7 +630,6 @@
     if(n.getHours()<h) n.setDate(n.getDate()-1); // その時刻より前は前日サイクル扱い
     return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate();
   }
-  function dayKey(){ return cycleKey(4); }     // 他の機能（ストレッチ選択など）は従来どおり4時起点
   function sectionOf(b){                       // どちらのタブの項目か
     var sec=b.closest('section');
     return (sec && sec.id==='morning') ? 'm' : 'n';
@@ -709,52 +701,68 @@
   });
   updateSpans();
 
-  // 夜の柔軟・ストレッチ（日替わり1本／ボルダリング強化）
-  var STRETCH=[
-    {part:'股関節・尻', acct:'tomiryu', title:'下半身全体を柔らかくする万能ストレッチ（10分）', id:'g9BT8ZpR0as'},
-    {part:'背骨', acct:'パーソナルトレーナー丈【ジョー】', title:'体の硬い人はまずコレ！4分でフニャフニャに', id:'JFG7N53O8CM'},
-    {part:'股関節・尻', acct:'パーソナルトレーナー丈【ジョー】', title:'超硬い人向け ガチガチ股関節が柔らかくなる（10分）', id:'fvvlWWArePc'},
-    {part:'筋膜リリース', acct:'リリースハウス', title:'全身フォームローラールーティン（22分）', id:'XQtnx6U-D4g'},
-    {part:'反り腰', acct:'オガトレ', title:'反り腰をしっかり解消するストレッチ', id:'IPvnqtokBMk'},
-    {part:'上半身', acct:'tomiryu', title:'上半身ストレッチ（6分）疲労回復・リラックス', id:'Rj0C1YvpRMU'},
-    {part:'股関節・尻', acct:'JapaneseYOGA', title:'股関節を柔らかくする10分ヨガ', id:'QZ2D41RX8pQ'},
-    {part:'首', acct:'美容整体アピアランスTV', title:'ストレートネック・首こり肩こり解消', id:'nT-Z9U7XH94'},
-    {part:'筋膜リリース', acct:'オガトレ', title:'ボール1つで背中〜お尻のコリをほぐす（5分）', id:'w0L6plNnuig'},
-    {part:'肩甲骨', acct:'オガトレ', title:'肩甲骨が超硬い人向け 柔らかくなるストレッチ', id:'ZYTlwh_FhoU'},
-    {part:'上半身', acct:'クライミングアップ', title:'【ボルダリング】自宅でできる上半身のストレッチ！11種目10分', id:'vQg0Wuacap0'}
+  /* 柔軟・ストレッチの動画リスト。
+     以前は日替わりで1本だけ出していたが、その日の調子で選びたいので全部載せる方式にした。
+     ・並びは部位ごと。迷った日用の1本だけ先頭に固定
+     ・タイトルは YouTube の実際のタイトルどおり（探すときに一致していないと迷うため）
+     ・カードごと <a> なので、どこを押しても1タップで動画ページへ飛ぶ */
+  var ST_PIN = {acct:'tomiryu', id:'g9BT8ZpR0as',
+    title:'10分間で下半身全体を柔らかくする万能ストレッチメニュー【腰痛改善、血行促進、疲労回復、怪我予防にどうぞ】'};
+  var ST_GROUPS = [
+    {name:'🦵 下半身・股関節', items:[
+      {acct:'元運動音痴が教える体の改善術　パーソナルトレーナー　丈【ジョー】', id:'fvvlWWArePc',
+       title:'【超硬い人向け】ガチガチな股関節が柔らかくなる10分ストレッチ'},
+      {acct:'JapaneseYOGA', id:'QZ2D41RX8pQ',
+       title:'【股関節を柔らかくする10分ヨガ】簡単にほぐれる魔法のレッスン'}
+    ]},
+    {name:'🌀 腰・背骨', items:[
+      {acct:'オガトレ', id:'IPvnqtokBMk', title:'【9分】反り腰をしっかり解消するストレッチ'},
+      {acct:'元運動音痴が教える体の改善術　パーソナルトレーナー　丈【ジョー】', id:'JFG7N53O8CM',
+       title:'【ストレッチ】体の硬い人はまずコレから！4分でフニャフニャに！！【体幹】'}
+    ]},
+    {name:'💪 上半身・肩甲骨・首', items:[
+      {acct:'tomiryu', id:'Rj0C1YvpRMU', title:'６分間の上半身ストレッチ【運動後の疲労回復、リラックスタイムに！】'},
+      {acct:'オガトレ', id:'ZYTlwh_FhoU',
+       title:'【基本版12分】肩甲骨が『超』硬い人向け！体がどんどん柔らかくなるストレッチ【2300万回再生】'},
+      {acct:'美容整体アピアランスTV', id:'nT-Z9U7XH94',
+       title:'何をやっても治らない『ストレートネック』はこれで治ります！頑固な首こり・肩こり解消！'},
+      {acct:'クライミングアップ', id:'vQg0Wuacap0',
+       title:'【ボルダリング】自宅でできる上半身のストレッチ！11種目10分'}
+    ]},
+    {name:'🧻 全身・筋膜リリース', items:[
+      {acct:'リリースハウス', id:'XQtnx6U-D4g',
+       title:'sub【痩せ体質に】22分で全身をじっくりほぐすフォームローラールーティン【疲労解消・姿勢改善】22MIN FULL BODY FOAM ROLLING｜#reletore'},
+      {acct:'オガトレ', id:'w0L6plNnuig',
+       title:'【5分】ボールひとつで超ラク！背中〜お尻のコリをほぐす簡単ストレッチ'}
+    ]}
   ];
-  function stretchDayNum(){
-    var n=new Date();
-    if(n.getHours()<4) n.setDate(n.getDate()-1); // 午前4時を境に翌日扱い（チェックのリセットと統一）
-    return Math.floor(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())/86400000);
-  }
-  function autoIndex(){ return ((stretchDayNum()%STRETCH.length)+STRETCH.length)%STRETCH.length; }
-  var PKEY='stretchPick';
-  function readPick(){
-    try{ var p=JSON.parse(localStorage.getItem(PKEY)||'{}'); if(p.day===dayKey()) return p.sel; }catch(e){}
-    return 'auto'; // 新しい日 → 今日のおすすめに戻る
-  }
-  var stSel=document.getElementById('stSelect');
-  if(stSel){ // ストレッチブロックが表示されているときだけ動作（非表示でもエラーにしない）
-    // プルダウンに「今日のおすすめ」＋全本を流し込む
-    stSel.innerHTML='<option value="auto">📅 今日のおすすめ（日替わり）</option>'+
-      STRETCH.map(function(v,i){ return '<option value="'+i+'">💪 '+v.part+'：'+v.title+'</option>'; }).join('');
-    var renderStretch=function(){
-      var sel=readPick();
-      var idx = sel==='auto' ? autoIndex() : (parseInt(sel,10)||0);
-      var v=STRETCH[idx];
-      document.getElementById('stPart').textContent='💪 '+v.part;
-      document.getElementById('stTitle').textContent=v.title;
-      document.getElementById('stAcct').textContent=v.acct;
-      document.getElementById('stLink').href='https://www.youtube.com/watch?v='+v.id;
-      stSel.value=sel; // プルダウンの表示を現在の選択に同期
-    };
-    stSel.addEventListener('change',function(){
-      localStorage.setItem(PKEY,JSON.stringify({day:dayKey(),sel:stSel.value}));
-      renderStretch();
+  (function(){
+    var box=document.getElementById('stList');
+    if(!box) return;                                  // ブロックが無い版でも壊さない
+    function card(v, pinned){
+      var a=document.createElement('a');
+      a.className='st-item'+(pinned?' st-pin':'');
+      a.href='https://www.youtube.com/watch?v='+v.id;
+      a.target='_blank'; a.rel='noopener';
+      var play=document.createElement('div'); play.className='st-play'; play.textContent='▶️';
+      var body=document.createElement('div'); body.className='st-body';
+      if(pinned){
+        var bd=document.createElement('div'); bd.className='st-badge';
+        bd.textContent='迷った日はこれ'; body.appendChild(bd);
+      }
+      var nm=document.createElement('div'); nm.className='st-name'; nm.textContent=v.title;
+      var mt=document.createElement('div'); mt.className='st-meta'; mt.textContent=v.acct;
+      body.appendChild(nm); body.appendChild(mt);
+      a.appendChild(play); a.appendChild(body);
+      return a;
+    }
+    box.appendChild(card(ST_PIN, true));
+    ST_GROUPS.forEach(function(g){
+      var h=document.createElement('div'); h.className='st-group'; h.textContent=g.name;
+      box.appendChild(h);
+      g.items.forEach(function(v){ box.appendChild(card(v,false)); });
     });
-    renderStretch();
-  }
+  })();
 
   // 自動リロード（最新版＆当日表示にする）
   // ① 開いたままなら 4:00（朝の最新化）と 15:00（チェックのリセット）にリロード
