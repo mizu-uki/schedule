@@ -187,10 +187,13 @@
   }
   .reset:active{background:var(--card);}
   .progress{text-align:center; color:var(--sub); font-size:.8rem; margin-top:10px;}
+  /* 🧘タブはストレッチだけを見る画面なので、上の見出し・意味・メリットは畳む */
+  body.tab-stretch #header{display:none;}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div id="header">
   <h1>🌅 5時起き 行動計画</h1>
   <div class="date" id="today"></div>
 
@@ -204,6 +207,7 @@
     <summary>☀️ 早起きのメリット（タップで確認）</summary>
     <ul class="merits-list"></ul>
   </details>
+  </div><!-- /#header -->
 
   <div class="tabs">
     <div class="tab" data-t="morning">🌅 明朝 5–8時</div>
@@ -605,6 +609,7 @@
       document.querySelectorAll('section').forEach(function(s){s.classList.remove('show');});
       t.classList.add('active');
       document.getElementById(t.dataset.t).classList.add('show');
+      document.body.classList.toggle('tab-stretch', t.dataset.t === 'stretch');
     });
   });
 
