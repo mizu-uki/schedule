@@ -703,13 +703,14 @@
 
   /* 柔軟・ストレッチの動画リスト。
      以前は日替わりで1本だけ出していたが、その日の調子で選びたいので全部載せる方式にした。
-     ・並びは部位ごと。迷った日用の1本だけ先頭に固定
+     ・並びは部位ごと。迷った日用の1本は「下半身・股関節」の先頭に置いて強調する
      ・タイトルは YouTube の実際のタイトルどおり（探すときに一致していないと迷うため）
      ・カードごと <a> なので、どこを押しても1タップで動画ページへ飛ぶ */
-  var ST_PIN = {acct:'tomiryu', id:'g9BT8ZpR0as',
-    title:'10分間で下半身全体を柔らかくする万能ストレッチメニュー【腰痛改善、血行促進、疲労回復、怪我予防にどうぞ】'};
   var ST_GROUPS = [
     {name:'🦵 下半身・股関節', items:[
+      // 迷った日用の1本。部位のまとまりを崩さないようグループ内の先頭に置き、見た目だけ強調する
+      {pin:true, acct:'tomiryu', id:'g9BT8ZpR0as',
+       title:'10分間で下半身全体を柔らかくする万能ストレッチメニュー【腰痛改善、血行促進、疲労回復、怪我予防にどうぞ】'},
       {acct:'元運動音痴が教える体の改善術　パーソナルトレーナー　丈【ジョー】', id:'fvvlWWArePc',
        title:'【超硬い人向け】ガチガチな股関節が柔らかくなる10分ストレッチ'},
       {acct:'JapaneseYOGA', id:'QZ2D41RX8pQ',
@@ -739,7 +740,8 @@
   (function(){
     var box=document.getElementById('stList');
     if(!box) return;                                  // ブロックが無い版でも壊さない
-    function card(v, pinned){
+    function card(v){
+      var pinned = !!v.pin;
       var a=document.createElement('a');
       a.className='st-item'+(pinned?' st-pin':'');
       a.href='https://www.youtube.com/watch?v='+v.id;
@@ -756,11 +758,10 @@
       a.appendChild(play); a.appendChild(body);
       return a;
     }
-    box.appendChild(card(ST_PIN, true));
     ST_GROUPS.forEach(function(g){
       var h=document.createElement('div'); h.className='st-group'; h.textContent=g.name;
       box.appendChild(h);
-      g.items.forEach(function(v){ box.appendChild(card(v,false)); });
+      g.items.forEach(function(v){ box.appendChild(card(v)); });
     });
   })();
 
