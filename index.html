@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <!--
   統合シェル（タブの器）。ここは原則いじらない。
-  タブは明朝／前夜の2つ。「組む」は残り時間ボタン（#left）が兼ねる：
+  タブは明朝／前夜／🧘ストレッチ。「組む」は残り時間ボタン（#left）が兼ねる：
     🌅明朝  = morning.html の内部タブ "morning"
     🌙前夜  = morning.html の内部タブ "night"
+    🧘      = morning.html の内部タブ "stretch"（絵文字だけの小さいタブ）
     ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
              → 「22:00 まで ○時間○分 ✏️組む」のボタンで開く
   ※かつてあった「今日の予定」タブ（today.html のチェックリスト）は
@@ -69,6 +70,9 @@
   .tab.on{color:#fff}
   #tabM.on{background:var(--morning)}
   #tabN.on{background:var(--night)}
+  #tabS.on{background:#3f8f6b}
+  /* 絵文字だけの小さいタブ。他のタブと幅を分け合わず、必要なぶんだけ取る */
+  .tab-mini{flex:0 0 auto;padding:8px 12px;font-size:15px}
   .panes{flex:1 1 auto;position:relative;min-height:0}
   iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
   iframe.on{display:block}
@@ -79,6 +83,7 @@
   <div class="tabs">
     <div class="tab" id="tabM">🌅 明朝</div>
     <div class="tab" id="tabN">🌙 前夜</div>
+    <div class="tab tab-mini" id="tabS" title="柔軟・ストレッチ">🧘</div>
   </div>
   <button class="left" id="left" type="button"
           title="今日の22:00までの残り時間。押すと「組む」（デイプランナー）を開く"></button>
@@ -105,11 +110,12 @@
   fP.src = planQ;                          // 10分キャッシュで古い版が動くのを防ぐ
   fM.src = 'morning.html?t=' + Date.now(); // 同上。チェックリストも同じリポジトリの morning.html が正
   var BTN = { m: document.getElementById('tabM'),      // 「組む」はタブ帯ではなく
-              n: document.getElementById('tabN') };      // 残り時間のボタン（#left）が担当する
+              n: document.getElementById('tabN'),        // 残り時間のボタン（#left）が担当する
+              s: document.getElementById('tabS') };      // 🧘 = ストレッチ
   var leftEl = document.getElementById('left');
-  var TABS = ['m', 'p', 'n'];                            // 有効なタブ名（これ以外の指定は無視する）
+  var TABS = ['m', 'p', 'n', 's'];                       // 有効なタブ名（これ以外の指定は無視する）
   var cur = null;                                        // 今どれを見ているか（チップの選択表示に使う）
-  var INNER = { m: 'morning', n: 'night' };   // morning.html 側の data-t
+  var INNER = { m: 'morning', n: 'night', s: 'stretch' };   // morning.html 側の data-t
   var KEY = 'shell-tab';
   var wanted = null;   // 朝アプリで表示したい内部タブ
 
@@ -161,7 +167,7 @@
   function show(which, remember){
     cur = which;
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
-    var useMorning = (which === 'm' || which === 'n');
+    var useMorning = (which !== 'p');            // 組む以外は morning.html の中身を出す
     fM.classList.toggle('on', useMorning);
     fP.classList.toggle('on', which === 'p');
     if(useMorning){
@@ -177,6 +183,7 @@
   window.showTab = show;
   BTN.m.addEventListener('click', function(){ show('m', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });
+  BTN.s.addEventListener('click', function(){ show('s', true); });
   leftEl.addEventListener('click', function(){ show('p', true); });
 
   // 初期表示: 同じ日に手動で選んだタブがあればそれを、なければ時刻で判断

@@ -67,6 +67,8 @@
     font-weight:700; font-size:.95rem; cursor:pointer; user-select:none;
   }
   .tab.active{background:var(--accent); color:#06121f; border-color:var(--accent);}
+  /* 絵文字だけの小さいタブ（ストレッチ用）。文字ぶんの幅を取らせない */
+  .tab-mini{flex:0 0 auto; padding:11px 14px;}
 
   section{display:none;}
   section.show{display:block;}
@@ -206,6 +208,7 @@
   <div class="tabs">
     <div class="tab" data-t="morning">🌅 明朝 5–8時</div>
     <div class="tab active" data-t="night">🌙 前夜の準備</div>
+    <div class="tab tab-mini" data-t="stretch" title="柔軟・ストレッチ">🧘</div>
   </div>
 
   <!-- ========== 前夜 ========== -->
@@ -365,22 +368,6 @@
         <span class="txt">💋 唇パック<span style="color:var(--sub);font-size:.8rem;">（唇ケア）</span></span></label>
     </div>
 
-    <!-- 柔軟・ストレッチ。既定は畳んだ状態で毎日表示する -->
-    <div class="block" id="stretchBlock" style="display:none;">
-      <!-- 稼働が少ないので既定は畳んでおく。開いた状態は端末に記憶する -->
-      <details class="fold" id="stretchFold">
-      <summary class="ttl">🧘 柔軟・ストレッチ（ボルダリング強化）</summary>
-      <div class="purpose"><b>🎯 目的：</b>ボルダリングのパフォーマンスUP。柔軟性と可動域を広げて、ムーブの幅を増やし・ケガを予防する。日替わりで1本ずつ。</div>
-      <div class="stretch">
-        <div class="stretch-part" id="stPart">部位</div>
-        <div class="stretch-title" id="stTitle">タイトル</div>
-        <div class="stretch-acct" id="stAcct">アカウント</div>
-        <select class="stretch-select" id="stSelect"></select>
-        <a class="ovice" id="stLink" href="#" target="_blank" rel="noopener" style="background:#3a1620;color:#ff8aa5;border-color:#7a2d3d;">▶️ このストレッチを再生</a>
-      </div>
-      </details>
-    </div>
-
     <div class="block">
       <div class="ttl">📋 準備・段取り</div>
 
@@ -454,6 +441,26 @@
       <label class="chk"><input type="checkbox" data-id="n5"><span class="box"></span>
         <span class="txt">🛏 <b>22:00にベッドイン</b></span></label>
       -->
+    </div>
+  </section>
+
+  <!-- ========== ストレッチ（タブ帯の🧘） ==========
+       前夜の中に置くと毎晩スクロールで通り過ぎるだけだったので、独立したタブに出した。 -->
+  <section id="stretch">
+    <!-- 柔軟・ストレッチ。既定は畳んだ状態で毎日表示する -->
+    <div class="block" id="stretchBlock" style="display:none;">
+      <!-- 稼働が少ないので既定は畳んでおく。開いた状態は端末に記憶する -->
+      <details class="fold" id="stretchFold">
+      <summary class="ttl">🧘 柔軟・ストレッチ（ボルダリング強化）</summary>
+      <div class="purpose"><b>🎯 目的：</b>ボルダリングのパフォーマンスUP。柔軟性と可動域を広げて、ムーブの幅を増やし・ケガを予防する。日替わりで1本ずつ。</div>
+      <div class="stretch">
+        <div class="stretch-part" id="stPart">部位</div>
+        <div class="stretch-title" id="stTitle">タイトル</div>
+        <div class="stretch-acct" id="stAcct">アカウント</div>
+        <select class="stretch-select" id="stSelect"></select>
+        <a class="ovice" id="stLink" href="#" target="_blank" rel="noopener" style="background:#3a1620;color:#ff8aa5;border-color:#7a2d3d;">▶️ このストレッチを再生</a>
+      </div>
+      </details>
     </div>
   </section>
 
@@ -564,7 +571,8 @@
   (function(){
     var f = document.getElementById('stretchFold');
     if(!f) return;
-    try{ if(localStorage.getItem('stretchOpen') === '1') f.open = true; }catch(e){}
+    // 専用タブに出したので既定は開いた状態。閉じたい人は畳めば覚える
+    try{ f.open = localStorage.getItem('stretchOpen') !== '0'; }catch(e){ f.open = true; }
     f.addEventListener('toggle', function(){
       try{ localStorage.setItem('stretchOpen', f.open ? '1' : '0'); }catch(e){}
     });
