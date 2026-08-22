@@ -175,11 +175,12 @@
 
   /* ストレッチ動画リスト。全部出して部位ごとにまとめ、1タップで再生ページへ飛ぶ */
   .st-group{margin:14px 2px 6px; font-size:.76rem; font-weight:700; color:var(--accent); letter-spacing:.04em;}
-  .st-item{display:flex; gap:10px; align-items:flex-start; padding:10px 11px; margin-bottom:7px;
+  .st-item{display:flex; gap:11px; align-items:center; padding:9px 10px; margin-bottom:7px;
     background:var(--card2); border:1px solid var(--line); border-radius:10px;
     text-decoration:none; color:var(--text);}
   .st-item:active{background:#2a3542;}
-  .st-item .st-play{flex:0 0 auto; font-size:.95rem; line-height:1.5;}
+  .st-item .st-thumb{flex:0 0 108px; width:108px; aspect-ratio:16/9; object-fit:cover;
+    border-radius:7px; background:#0b0f14;}
   .st-item .st-body{flex:1; min-width:0;}
   .st-name{font-size:.85rem; font-weight:700; line-height:1.45;}
   .st-meta{font-size:.73rem; color:var(--sub); margin-top:3px;}
@@ -707,19 +708,15 @@
      ・タイトルは YouTube の実際のタイトルどおり（探すときに一致していないと迷うため）
      ・カードごと <a> なので、どこを押しても1タップで動画ページへ飛ぶ */
   var ST_GROUPS = [
-    {name:'🦵 下半身・股関節', items:[
+    {name:'🦵 下半身・股関節・腰', items:[
       // 迷った日用の1本。部位のまとまりを崩さないようグループ内の先頭に置き、見た目だけ強調する
       {pin:true, acct:'tomiryu', id:'g9BT8ZpR0as',
        title:'10分間で下半身全体を柔らかくする万能ストレッチメニュー【腰痛改善、血行促進、疲労回復、怪我予防にどうぞ】'},
       {acct:'元運動音痴が教える体の改善術　パーソナルトレーナー　丈【ジョー】', id:'fvvlWWArePc',
        title:'【超硬い人向け】ガチガチな股関節が柔らかくなる10分ストレッチ'},
       {acct:'JapaneseYOGA', id:'QZ2D41RX8pQ',
-       title:'【股関節を柔らかくする10分ヨガ】簡単にほぐれる魔法のレッスン'}
-    ]},
-    {name:'🌀 腰・背骨', items:[
-      {acct:'オガトレ', id:'IPvnqtokBMk', title:'【9分】反り腰をしっかり解消するストレッチ'},
-      {acct:'元運動音痴が教える体の改善術　パーソナルトレーナー　丈【ジョー】', id:'JFG7N53O8CM',
-       title:'【ストレッチ】体の硬い人はまずコレから！4分でフニャフニャに！！【体幹】'}
+       title:'【股関節を柔らかくする10分ヨガ】簡単にほぐれる魔法のレッスン'},
+      {acct:'オガトレ', id:'IPvnqtokBMk', title:'【9分】反り腰をしっかり解消するストレッチ'}
     ]},
     {name:'💪 上半身・肩甲骨・首', items:[
       {acct:'tomiryu', id:'Rj0C1YvpRMU', title:'６分間の上半身ストレッチ【運動後の疲労回復、リラックスタイムに！】'},
@@ -728,7 +725,9 @@
       {acct:'美容整体アピアランスTV', id:'nT-Z9U7XH94',
        title:'何をやっても治らない『ストレートネック』はこれで治ります！頑固な首こり・肩こり解消！'},
       {acct:'クライミングアップ', id:'vQg0Wuacap0',
-       title:'【ボルダリング】自宅でできる上半身のストレッチ！11種目10分'}
+       title:'【ボルダリング】自宅でできる上半身のストレッチ！11種目10分'},
+      {acct:'元運動音痴が教える体の改善術　パーソナルトレーナー　丈【ジョー】', id:'JFG7N53O8CM',
+       title:'【ストレッチ】体の硬い人はまずコレから！4分でフニャフニャに！！【体幹】'}
     ]},
     {name:'🧻 全身・筋膜リリース', items:[
       {acct:'リリースハウス', id:'XQtnx6U-D4g',
@@ -746,7 +745,10 @@
       a.className='st-item'+(pinned?' st-pin':'');
       a.href='https://www.youtube.com/watch?v='+v.id;
       a.target='_blank'; a.rel='noopener';
-      var play=document.createElement('div'); play.className='st-play'; play.textContent='▶️';
+      // サムネイルは YouTube が静的に配信している画像（APIもキーも不要）
+      var play=document.createElement('img');
+      play.className='st-thumb'; play.loading='lazy'; play.alt='';
+      play.src='https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg';
       var body=document.createElement('div'); body.className='st-body';
       if(pinned){
         var bd=document.createElement('div'); bd.className='st-badge';
