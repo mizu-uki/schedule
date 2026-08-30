@@ -44,6 +44,9 @@
     padding:12px 14px; font-size:.9rem; color:var(--sub); margin:14px 0 22px;
   }
   .lead b{color:var(--text);}
+  /* 折りたたみの中に入れたので、外枠は details 側に任せる */
+  #leadFold{margin:14px 0 22px;}
+  #leadFold .lead{background:none; border:0; margin:0; padding:12px 14px;}
 
   .merits{
     background:var(--card); border:1px solid var(--line); border-radius:12px;
@@ -197,15 +200,19 @@
   <h1>🌅 5:45起き 行動計画</h1>
   <div class="date" id="today"></div>
 
-  <div class="lead">
-    <b>この習慣の意味：</b> 5:45起き・6:00から動き出す生活を続けるための“錨（いかり）”を作る。
-    一人だと二度寝・ダラダラに負けるから、<b>決めた手順</b>と
-    <b>各タスクの目的</b>で自分を引っ張る。
-    <div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:.82rem;">
-      📚 <b>参考にしている1日：</b>エコノミスト・唐鎌大輔さんの1日
-      （5:45起床 → 6:00-7:00 ジム → 7:00-11:00 レポート執筆 …… 23:00就寝）。
+  <!-- 毎日読むものではないので、早起きのメリットと同じく既定は畳んでおく -->
+  <details class="merits" id="leadFold">
+    <summary>📌 この習慣の意味（タップで確認）</summary>
+    <div class="lead">
+      5:45起き・6:00から動き出す生活を続けるための“錨（いかり）”を作る。
+      一人だと二度寝・ダラダラに負けるから、<b>決めた手順</b>と
+      <b>各タスクの目的</b>で自分を引っ張る。
+      <div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:.82rem;">
+        📚 <b>参考にしている1日：</b>エコノミスト・唐鎌大輔さんの1日
+        （5:45起床 → 6:00-7:00 ジム → 7:00-11:00 レポート執筆 …… 23:00就寝）。
+      </div>
     </div>
-  </div>
+  </details>
 
   <details class="merits">
     <summary>☀️ 早起きのメリット（タップで確認）</summary>
