@@ -39,7 +39,7 @@
   .status{color:var(--sub);font-size:11.5px;white-space:nowrap}
   .dow{font-size:12.5px;font-weight:700;color:var(--sub);min-width:2.2em}
   .dow.sat{color:#6fa8ff} .dow.sun{color:#ff8a8a} .dow.today{color:var(--text)}
-  /* 22時までの残り時間。今日を見ているときだけ出す（他の日では意味がないので消す） */
+  /* 締め（23時）までの残り時間。今日を見ているときだけ出す（他の日では意味がないので消す） */
   .left{display:none;align-items:center;gap:5px;white-space:nowrap;
     background:rgba(79,140,255,.12);border:1px solid rgba(79,140,255,.45);color:#cfe0ff;
     border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -135,7 +135,7 @@
   <button class="btn" id="prev">‹</button>
   <button class="btn" id="next">›</button>
   <button class="btn" id="todayBtn">今日</button>
-  <span class="left" id="left" title="今日の22:00までの残り時間"></span>
+  <span class="left" id="left" title="今日の23:00までの残り時間"></span>
   <button class="btn" id="add">＋ ブロック</button>
   <button class="btn" id="undo" title="元に戻す（Cmd/Ctrl+Z）" disabled>↶ 戻す</button>
   <button class="btn" id="sideBtn">📋 タスク</button>
@@ -241,7 +241,7 @@ var HOUR = parseInt(getComputedStyle(document.documentElement).getPropertyValue(
 var PPM = HOUR / 60;                          // 1分あたりのピクセル
 var SNAP = 5;                                 // 5分刻み
 var MARK_H = [6, 12, 18, 22];                 // 1日の区切りとして線を強調する時刻
-var DAY_END = 22*60;                          // 「今日の残り時間」の締め（前夜タスクの開始）
+var DAY_END = 23*60;                          // 「今日の残り時間」の締め（就寝時刻）
 /* シェルに埋め込まれて動いているか（単体で開いたときだけ残り時間を自前で出す） */
 var EMBEDDED = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
 var blocks = [];                              // {id,t,d,name,k,detail}
@@ -398,7 +398,7 @@ function drawNow(){
   grid.appendChild(el);
 }
 
-/* 22時までの残り時間。数字を見て「あと何ができるか」を即断するための表示。
+/* 締め（23時）までの残り時間。数字を見て「あと何ができるか」を即断するための表示。
    今日を見ているときだけ出す（別の日を編集中に今日の残りが出ていると誤読するため）。 */
 function drawLeft(){
   var el = document.getElementById("left"); if(!el) return;
@@ -409,7 +409,7 @@ function drawLeft(){
   var txt = m >= 60 ? Math.floor(m/60)+"時間"+(m%60 ? (m%60)+"分" : "") : m+"分";
   el.className = "left on" + (rest < 60 ? " warn" : "");     // 残り1時間を切ったら赤
   el.textContent = "";
-  el.appendChild(document.createTextNode(over ? "22:00 から" : "22:00 まで"));
+  el.appendChild(document.createTextNode(over ? hhmm(DAY_END)+" から" : hhmm(DAY_END)+" まで"));
   var b = document.createElement("b"); b.textContent = txt; el.appendChild(b);
   if(over) el.appendChild(document.createTextNode("経過"));
 }

@@ -6,7 +6,7 @@
     🌙前夜  = morning.html の内部タブ "night"
     🧘      = morning.html の内部タブ "stretch"（絵文字だけの小さいタブ）
     ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
-             → 「22:00 まで ○時間○分 ✏️組む」のボタンで開く
+             → 「23:00 まで ○時間○分 ✏️組む」のボタンで開く
   ※かつてあった「今日の予定」タブ（today.html のチェックリスト）は
     組むタブと役割が重複するため廃止。today.html 自体は残してある。
   チェックリスト本体は同リポジトリの morning.html（同一オリジン）。iframe内のタブを直接クリックし、
@@ -44,7 +44,7 @@
     display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px}
   .tabs{display:flex;gap:4px;flex:1 1 auto;max-width:560px;
     background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
-  /* 「組む」タブ兼 22時までの残り時間。押すとプランナーが開く。
+  /* 「組む」タブ兼 締め（23時）までの残り時間。押すとプランナーが開く。
      タブ帯の中に3つ並べるより、残り時間そのものを入口にしたほうが目に入る。 */
   .left{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
     background:rgba(79,140,255,.14);border:1px solid rgba(79,140,255,.45);color:#cfe0ff;
@@ -86,7 +86,7 @@
     <div class="tab tab-mini" id="tabS" title="柔軟・ストレッチ">🧘</div>
   </div>
   <button class="left" id="left" type="button"
-          title="今日の22:00までの残り時間。押すと「組む」（デイプランナー）を開く"></button>
+          title="今日の23:00までの残り時間。押すと「組む」（デイプランナー）を開く"></button>
 </div>
 <div class="panes">
   <!-- src は JS から付与（morning.html も更新が即反映されるように） -->
@@ -203,9 +203,11 @@
     show(pick, false);
   })();
 
-  /* 22時までの残り時間。どのタブを見ていても目に入るようにシェル側で出す。
+  /* 締め（23時）までの残り時間。どのタブを見ていても目に入るようにシェル側で出す。
      （プランナー内の同じ表示は、埋め込み時は二重になるので向こうで隠している） */
-  var DAY_END = 22*60;
+  var DAY_END = 23*60;                      // 1日の締め（就寝時刻）。ラベルもここから作る
+  function hhmmEnd(){ var h = Math.floor(DAY_END/60), m = DAY_END%60;
+                      return h + ':' + (m<10?'0':'') + m; }
   function drawLeft(){
     var el = leftEl;
     var n = new Date(), rest = DAY_END - (n.getHours()*60 + n.getMinutes());
@@ -214,7 +216,7 @@
     el.className = 'left' + (rest < 60 ? ' warn' : '')      // 残り1時間を切ったら赤
                           + (cur === 'p' ? ' on' : '');     // 表示中なら選択状態
     el.textContent = '';
-    el.appendChild(document.createTextNode(over ? '22:00 から' : '22:00 まで'));
+    el.appendChild(document.createTextNode(over ? hhmmEnd()+' から' : hhmmEnd()+' まで'));
     var b = document.createElement('b'); b.textContent = txt; el.appendChild(b);
     if(over) el.appendChild(document.createTextNode('経過'));
     var pen = document.createElement('span');               // 何のボタンかを示す札
