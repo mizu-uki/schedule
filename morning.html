@@ -91,6 +91,8 @@
   .purpose b{color:var(--amber);}
   .first{font-size:.82rem; color:var(--green); margin:2px 2px 10px; font-weight:600;}
   .first .k{opacity:.8;}
+  /* 目的・最初の一手の枠は読まれていなかったので非表示。目的は各チェック項目の後ろの（）に短く書く（2026-10-16 本人） */
+  .purpose,.first{display:none;}
   .note{font-size:.82rem; color:var(--sub); margin:2px 2px 10px; padding-left:11px; border-left:2px solid var(--line);}
   .note span{display:block; margin-bottom:3px;}
   .note span:last-child{margin-bottom:0;}
@@ -493,8 +495,8 @@
       <div class="time">5:45 – 6:00 起床</div>
       <div class="ttl">🛏 ベッド・布団から脱出</div>
       <div class="purpose"><b>🎯 目的：</b>6:00にはもう動き出しているための15分。二度寝の最大の壁＝布団の中なので、まず物理的に出れば勝ち。考えずに体を動かす。</div>
-      <label class="chk"><input type="checkbox" data-id="m0a"><span class="box"></span><span class="txt">🧘 床（ヨガマット）に移動</span></label>
-      <label class="chk"><input type="checkbox" data-id="m0b"><span class="box"></span><span class="txt">⏰ 3分タイマーで起床</span></label>
+      <label class="chk"><input type="checkbox" data-id="m0c"><span class="box"></span><span class="txt">⏰ 1回で起きる<span style="color:var(--sub);font-size:.8rem;">（スヌーズを減らす。二度寝は体内時計が乱れる）</span></span></label>
+      <label class="chk"><input type="checkbox" data-id="m0d"><span class="box"></span><span class="txt">☀️ 日光を浴びる<span style="color:var(--sub);font-size:.8rem;">（体内時計が調整される）</span></span></label>
     </div>
 
     <div class="block">
@@ -520,7 +522,7 @@
       <div class="purpose"><b>🎯 目的：</b>経理転職に向けた“武器”を増やす時間。ただ見るのではなく「実務で使う知識を仕入れている」意識で。冴えた朝イチを最重要科目に。</div>
       <div class="first"><span class="k">🔑 最初の一手：</span>座って教材を開き、動画を再生。</div>
       <div class="note"><span>講義を視聴（〜6:00 / 約40分）</span><span>関連問題を解く（6:00〜6:30 / 直後アウトプットで定着）</span></div>
-      <label class="chk"><input type="checkbox" data-id="m2a"><span class="box"></span><span class="txt">📘 簿記2級をやった</span></label>
+      <label class="chk"><input type="checkbox" data-id="m2a"><span class="box"></span><span class="txt">📘 簿記2級をやった<span style="color:var(--sub);font-size:.8rem;">（経理転職の武器を増やす）</span></span></label>
     </div>
 
     <!-- 5:45〜6:00は起床と起動、6:00ちょうどから作業を始める。7:00以降はEC業務(8:00)までの余白。
@@ -530,14 +532,14 @@
       <div class="ttl">⏱ 40分 作業（締切効果）</div>
       <div class="purpose"><b>🎯 目的：</b>「40分で終わらせる」と締切を切ると、同じ作業でも集中が段違いになる。長さより区切りが効く。</div>
       <div class="first"><span class="k">🔑 最初の一手：</span>40分のタイマーをかけてから、作業を開く。</div>
-      <label class="chk"><input type="checkbox" data-id="m5a"><span class="box"></span><span class="txt">⏱ <b>40分 作業した</b></span></label>
+      <label class="chk"><input type="checkbox" data-id="m5a"><span class="box"></span><span class="txt">⏱ <b>40分 作業した</b><span style="color:var(--sub);font-size:.8rem;">（締切を切ると集中が上がる）</span></span></label>
     </div>
 
     <div class="block">
       <div class="time">6:40 – 7:00</div>
       <div class="ttl">🍞 朝食</div>
       <div class="purpose"><b>🎯 目的：</b>作業を切り上げる合図。あわせて<b>バルクアップの1食</b>——たんぱく質＋炭水化物をここで入れて、ジムでかけた負荷を筋肉に変える材料を切らさない。朝抜くと分解に回る。</div>
-      <label class="chk"><input type="checkbox" data-id="m6a"><span class="box"></span><span class="txt">🍞 <b>朝食を食べた</b></span></label>
+      <label class="chk"><input type="checkbox" data-id="m6a"><span class="box"></span><span class="txt">🍞 <b>朝食・タンパク質を食べる</b><span style="color:var(--sub);font-size:.8rem;">（体内時計が調整される・バルクアップ）</span></span></label>
     </div>
 
     <!-- バッファは一旦非表示（本人が自分で時間調整するため）
@@ -556,7 +558,7 @@
       <div class="purpose"><b>🎯 目的：</b>将来の収入の柱を毎日少しずつ積む。完成させなくていい。「今日も1ブロック前進した」事実が続ける力になる。</div>
       <div class="first"><span class="k">🔑 最初の一手：</span>エディタを開いて、見出し（H2）を3つ書き出す。</div>
       <div class="note"><span>見出しを3つ書き出す</span><span>1セクション書き切る（目標）</span></div>
-      <label class="chk"><input type="checkbox" data-id="m4a"><span class="box"></span><span class="txt">✍️ ブログを書いた</span></label>
+      <label class="chk"><input type="checkbox" data-id="m4a"><span class="box"></span><span class="txt">✍️ ブログを書いた<span style="color:var(--sub);font-size:.8rem;">（収入の柱を少しずつ積む）</span></span></label>
     </div>
 
     <div class="block" style="text-align:center; color:var(--green); font-weight:700;">
