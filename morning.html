@@ -223,12 +223,11 @@
     </div>
   </details>
 
-  <!-- 上部の早起きのメリットは非表示（前夜タブの就寝直前の枠で確認する）
+  <!-- 早起きのメリットは「この習慣の意味」のすぐ下に置く（2026-10-22 就寝直前の枠から移動） -->
   <details class="merits">
-    <summary>☀️ 早起きのメリット（タップで確認）</summary>
+    <summary>☀️ 早起きのメリット（タップで開く）</summary>
     <ul class="merits-list"></ul>
   </details>
-  -->
   </div><!-- /#header -->
 
   <div class="tabs">
@@ -457,10 +456,6 @@
 
     <div class="block">
       <div class="ttl">🛏 就寝直前（23:00頃）</div>
-      <details class="merits" style="margin:4px 0 10px;">
-        <summary>☀️ 早起きのメリット（タップで開く）</summary>
-        <ul class="merits-list"></ul>
-      </details>
       <label class="chk"><input type="checkbox" data-id="n17"><span class="box"></span><span class="txt">☀️ 明日の朝、勉強・事業に取り組む自分をイメージした</span></label>
 
       <!-- アイマスクの項目は一旦非表示
@@ -595,7 +590,7 @@
   document.getElementById('today').textContent =
     d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日('+w[d.getDay()]+')';
 
-  // 早起きのメリット（1か所で定義 → 上部と前夜タブ末尾の両方に流し込む）
+  // 早起きのメリット（1か所で定義 → 上部の「この習慣の意味」の下に流し込む）
   var MERITS=[
     '🧠 <b>朝は集中力が一番高い静かな時間。</b>勉強・副業が毎日進み、将来の選択肢（収入・転職）が広がる',
     '☀️ 朝日でセロトニンが出て気分が安定し、夜もよく眠れる。一日を<b>余裕を持って</b>始められる',
