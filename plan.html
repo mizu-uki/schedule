@@ -46,6 +46,7 @@
   .left.on{display:inline-flex}
   .left.warn{background:rgba(255,93,93,.12);border-color:rgba(255,93,93,.5);color:#ffc2c2}
   .left b{font-size:14px}
+  .left .mins{margin-left:-2px;font-size:11.5px;opacity:.8}
 
   /* ---- 本体 ---- */
   .wrap{flex:1 1 auto;display:flex;min-height:0}
@@ -411,6 +412,11 @@ function drawLeft(){
   el.textContent = "";
   el.appendChild(document.createTextNode(over ? hhmm(DAY_END)+" から" : hhmm(DAY_END)+" まで"));
   var b = document.createElement("b"); b.textContent = txt; el.appendChild(b);
+  if(m >= 60){                                              // 1時間以上なら分だけの表記も添える
+    var mins = document.createElement("span");
+    mins.className = "mins"; mins.textContent = "（"+m+"分）";
+    el.appendChild(mins);
+  }
   if(over) el.appendChild(document.createTextNode("経過"));
 }
 

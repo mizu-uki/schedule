@@ -52,6 +52,8 @@
     font-variant-numeric:tabular-nums;font-family:inherit;cursor:pointer;
     transition:background .15s,border-color .15s}
   .left b{font-size:15px}
+  /* 同じ残りを分だけでも（何分の作業がいくつ入るかを読むため） */
+  .left .mins{margin-left:-4px;font-size:12px;opacity:.8}
   /* 何のボタンかを示す小さな札。区切り線を入れて残り時間と読み分けられるようにする */
   .left .pen{font-size:11px;font-weight:700;opacity:.85;
     border-left:1px solid currentColor;padding-left:8px}
@@ -218,6 +220,11 @@
     el.textContent = '';
     el.appendChild(document.createTextNode(over ? hhmmEnd()+' から' : hhmmEnd()+' まで'));
     var b = document.createElement('b'); b.textContent = txt; el.appendChild(b);
+    if(m >= 60){                                            // 1時間以上なら分だけの表記も添える
+      var mins = document.createElement('span');
+      mins.className = 'mins'; mins.textContent = '（'+m+'分）';
+      el.appendChild(mins);
+    }
     if(over) el.appendChild(document.createTextNode('経過'));
     var pen = document.createElement('span');               // 何のボタンかを示す札
     pen.className = 'pen'; pen.textContent = '✏️ 組む';
