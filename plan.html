@@ -90,6 +90,8 @@
   .blk[data-src=gcal]{background:rgba(176,84,34,.34);border-color:rgba(232,118,58,.55);
     color:#f7d9c6;border-left:4px solid #e8763a}
   .blk[data-src=gcal] .tag{background:rgba(232,118,58,.22);color:#f0b48c}
+  /* Todoist の時刻つきタスクは左端の赤線で見分ける（中の色は業務／個人のまま） */
+  .blk[data-src=todoist]{border-left:4px solid #e44332}
   .blk.drag{opacity:.85;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.5)}
   /* 伸縮ハンドルは「中央のバー」だけ。幅いっぱいにすると短いブロックで
      全面がハンドルになり、動かしたいのに伸びてしまうため、当たり判定を中央に限定する。 */
@@ -601,6 +603,7 @@ function setDate(key){
   seedDailyFixed(key);
   migrateFixed(key);
   if(localStorage.getItem("gcalUrl")) fetchGCal(false);   // 設定済みなら日付に合わせて取り直す
+  if(localStorage.getItem("todoistToken")) fetchTodoist();
   render(); drawLeft();
   setStatus(blocks.length ? blocks.length+" ブロック" : "空です");
 }
@@ -842,15 +845,11 @@ function fetchTodoist(){
   var tk = localStorage.getItem("todoistToken");
   if(!tk){ openConfig(); return; }
   var box = document.getElementById("todoist");
+  var reqDate = curDate;
   box.innerHTML = '<div class="chip">取得中…</div>';
-  fetch("https://api.todoist.com/api/v1/tasks?limit=200", {headers:{Authorization:"Bearer "+tk.trim()}})
-  .then(function(r){
-    if(r.status === 401){ localStorage.removeItem("todoistToken"); throw new Error("トークンが無効です"); }
-    if(!r.ok) throw new Error("取得失敗 "+r.status);
-    return r.json();
-  })
-  .then(function(j){
-    var list = (j && j.results) ? j.results : (Array.isArray(j)? j : []);
+  todoistTasks(tk.trim(), "", [])
+  .then(function(list){
+    if(reqDate !== curDate) return;                 // 日付を切り替えた後の古い応答は捨てる
     var today = curDate;
     var hit = list.filter(function(t){
       return t.due && String(t.due.date).slice(0,10) <= today;
@@ -871,14 +870,92 @@ function fetchTodoist(){
     re.className = "chip"; re.textContent = "↻ 取り直す";
     re.addEventListener("click", fetchTodoist);
     box.appendChild(re);
+    autoImportTodoist(list, reqDate);               // 時刻つきのタスクはそのままタイムラインへ
   })
   .catch(function(e){
     box.innerHTML = '<div class="chip">'+ (e.message||"取得できませんでした") +'</div>';
+    setStatus("Todoist：" + (e.message||"取得できませんでした"));
     var again = document.createElement("button");
     again.className="chip"; again.textContent="⚙ トークンを入れ直す";
     again.addEventListener("click", function(){ localStorage.removeItem("todoistToken"); fetchTodoist(); });
     document.getElementById("todoist").appendChild(again);
   });
+}
+
+/* 全タスクを取る。200件で切れるので next_cursor がある間は続きを読む */
+function todoistTasks(tk, cursor, acc){
+  var u = "https://api.todoist.com/api/v1/tasks?limit=200" +
+          (cursor ? "&cursor="+encodeURIComponent(cursor) : "");
+  return fetch(u, {headers:{Authorization:"Bearer "+tk}})
+  .then(function(r){
+    if(r.status === 401){ localStorage.removeItem("todoistToken"); throw new Error("トークンが無効です"); }
+    if(!r.ok) throw new Error("取得失敗 "+r.status);
+    return r.json();
+  })
+  .then(function(j){
+    acc = acc.concat((j && j.results) ? j.results : (Array.isArray(j)? j : []));
+    return (j && j.next_cursor) ? todoistTasks(tk, j.next_cursor, acc) : acc;
+  });
+}
+
+/* Todoist の期日を日付と分に分ける。時刻が無いタスクは null。
+   多くは時差なしの "2026-11-02T18:00:00"。時差つき（末尾 Z）はこの端末の時刻に直す。 */
+function todoistWhen(due){
+  var s = String((due && due.date) || "");
+  if(s.indexOf("T") === -1) return null;
+  if(!/Z$/.test(s)) return {date:s.slice(0,10), t:toMin(s.slice(11,16))};
+  var d = new Date(s);
+  return {date:dateKey(d), t:d.getHours()*60 + d.getMinutes()};
+}
+
+/* 時刻つきのタスクを自動でタイムラインに置く（カレンダーの autoImportGCal と同じ考え方）。
+   ・Todoist 側で時刻が変わったときだけ追従する。手で動かした枠は次の読み込みで戻さない
+   ・別の日へ移した／消したタスクは取り下げる。ただし始まった後の枠と過去の日は残す
+     （完了するとタスク一覧から消えるので、実績まで消してしまわないため）
+   ・手で同じ名前のブロックを置いてある日は二重に足さない */
+function autoImportTodoist(list, forDate){
+  if(forDate !== curDate) return;
+  var today = dateKey(new Date()), now = new Date();
+  var nowMin = now.getHours()*60 + now.getMinutes();
+  var hit = [];
+  list.forEach(function(t){
+    var w = todoistWhen(t.due);
+    if(w && w.date === forDate) hit.push({task:t, t:w.t});
+  });
+
+  var ids = hit.map(function(h){ return h.task.id; });
+  var removed = 0;
+  blocks = blocks.filter(function(b){
+    if(b.src !== "todoist" || ids.indexOf(b.tid) !== -1) return true;
+    if(forDate < today || (forDate === today && b.t <= nowMin)) return true;
+    removed++; return false;
+  });
+
+  var added = 0, moved = 0;
+  hit.forEach(function(h){
+    var t = h.task, dur = t.duration;
+    var d = dur ? (dur.unit === "day" ? dur.amount*24*60 : dur.amount) : 30;
+    var at = h.t + "/" + d;                                // 最後に見た Todoist の時刻と長さ
+    var same = blocks.filter(function(b){ return b.src === "todoist" && b.tid === t.id; })[0];
+    if(same){
+      if(same.tdAt !== at){ same.t = h.t; same.d = d; same.tdAt = at; moved++; }
+      if(same.name !== t.content){ same.name = t.content; moved++; }
+    }else if(!blocks.some(function(b){ return b.name === t.content; })){
+      blocks.push({id:uid(), t:clamp(h.t, 0, END_H*60), d:d, name:t.content,
+                   k: /【G】|^G /.test(t.content) ? "k" : "p", detail:"",
+                   src:"todoist", tid:t.id, tdAt:at});
+      added++;
+    }
+  });
+
+  if(added || moved || removed){
+    save(); render();
+    var msg = [];
+    if(added) msg.push(added+"件追加");
+    if(moved) msg.push(moved+"件更新");
+    if(removed) msg.push(removed+"件取り下げ");
+    setStatus("Todoist 同期：" + msg.join("・"));
+  }
 }
 
 /* ============ GitHub 同期 ============
@@ -998,6 +1075,7 @@ document.getElementById("cfgSave").addEventListener("click", function(){
   cfgMask.classList.remove("on");
   setStatus("設定を保存しました");
   if(localStorage.getItem("gcalUrl")) fetchGCal(false);
+  if(localStorage.getItem("todoistToken")) fetchTodoist();
 });
 
 /* ============ 起動 ============ */
