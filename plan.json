@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T17:31:29.566Z",
+ "updated": "2026-11-04T01:20:35.643Z",
  "plans": {
   "2026-10-09": [
    {
@@ -494,18 +494,22 @@
     "detail": "",
     "src": "todoist",
     "tid": "6X7jhxcqqWgXFXRG",
-    "tdAt": "660/30"
+    "tdAt": "660/30",
+    "_col": 0,
+    "_cols": 1
    },
    {
     "id": "bew331du",
-    "t": 1095,
+    "t": 1140,
     "d": 60,
     "name": "💪ジム",
     "k": "p",
     "detail": "",
     "src": "todoist",
     "tid": "6hvCX9H9CqCcV9jp",
-    "tdAt": "1095/60"
+    "tdAt": "1095/60",
+    "_col": 0,
+    "_cols": 1
    }
   ],
   "2026-10-24": [
