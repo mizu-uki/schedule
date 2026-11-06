@@ -186,7 +186,14 @@
   BTN.m.addEventListener('click', function(){ show('m', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });
   BTN.s.addEventListener('click', function(){ show('s', true); });
-  leftEl.addEventListener('click', function(){ show('p', true); });
+  // 残り時間ボタン = プランナーを「今日」の日付で開く（別の日を見ていても今日へ戻す）
+  leftEl.addEventListener('click', function(){
+    show('p', true);
+    try{
+      var tb = fP.contentDocument && fP.contentDocument.getElementById('todayBtn');
+      if(tb) tb.click();        // プランナー側の「今日」ボタンと同じ動き
+    }catch(e){}                 // 読み込み前なら何もしない（読み込み時は今日で開く）
+  });
 
   // 初期表示: 同じ日に手動で選んだタブがあればそれを、なければ時刻で判断
   //   4:00–11:59 → 明朝 / 12:00–19:59 → 今日の予定 / 20:00–3:59 → 前夜の準備
