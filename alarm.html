@@ -86,6 +86,10 @@
     <pre id="recent" class="sub">―</pre>
   </div>
 
+  <div class="card">
+    <div class="row"><span class="sub">ランプ（最後に確かめた）</span><b id="lampInfo">―</b></div>
+  </div>
+
   <div class="sub" style="text-align:center">
     <span id="updated"></span>　<a href="#" id="reload" style="color:var(--accent)">読み直す</a>　<a href="#" id="openSetup" style="color:var(--sub)">⚙</a>
   </div>
@@ -158,6 +162,7 @@
              '</span><button class="ghost" data-del="' + esc(o.date) + '" type="button">消す</button></div>';
     }).join('') : '<div class="sub">なし</div>';
     $('recent').textContent = s['直近7日'] || '―';
+    $('lampInfo').textContent = (s['ランプ（最後に確かめた時刻）'] || '―') + (s['ランプを確かめた日時'] ? '　' + s['ランプを確かめた日時'].slice(5) : '');   // 念のための別枠（2026-11-08 本人）
     $('updated').textContent = '読込 ' + new Date().toTimeString().slice(0, 5);
   }
 
