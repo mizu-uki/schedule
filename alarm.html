@@ -39,7 +39,7 @@
   button.ghost{background:transparent;border:1px solid var(--line);color:var(--sub)}
   button:disabled{opacity:.5}
   .line{display:flex;gap:8px;align-items:center;margin-top:8px}
-  .line > *{flex:1 1 0}
+  .line > *{flex:1 1 0;min-width:0}   /* 狭い画面で日付の欄がはみ出さないように */
   .line > button{flex:0 0 auto}
   .off{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
   .off:last-child{border-bottom:0}
