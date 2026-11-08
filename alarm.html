@@ -61,17 +61,20 @@
   </div>
 
   <div class="card">
+    <div class="ttl"><span>🔇 音</span><span id="soundPill" class="pill"></span></div>
+    <div class="sub" id="soundText">―</div>
+    <div class="line"><button id="stopBtn" type="button" style="background:#c0603c">🔇 今鳴っている音を止める</button></div>
+    <div class="sub" style="margin-top:6px">押すと20秒ほどで、ラジオと目覚ましが止まります（Mac で鳴っている間だけ効きます）。ラジオ体操の動画は開きません。</div>
+  </div>
+
+  <div class="card">
     <div class="ttl"><span>⏰ 次の朝</span><span id="macPill" class="pill"></span></div>
     <div id="next" class="big">―</div>
     <div id="rows"></div>
     <div id="notes"></div>
   </div>
 
-  <div class="card">
-    <div class="ttl">起床時間を変える</div>
-    <div class="sub">ラジオとランプは15分前に、目覚ましはこの時刻に。次に変えるまで毎日。Mac が10分以内に反映します。</div>
-    <div class="line"><input type="time" id="wake" step="300"><button id="setWake" type="button">変える</button></div>
-  </div>
+  <!-- 「起床時間を変える」は 2026-11-08 本人の判断で外した。起床時間はチャットで「起床 ◯:◯◯」と伝える（ランプまでそろう） -->
 
   <div class="card">
     <div class="ttl">お休み（鳴らさない日）</div>
@@ -138,8 +141,6 @@
     ];   // 「ラジオの止まる保険」「ランプ（最後に確かめた）」は 2026-11-08 本人の希望で非表示（ランプのずれは下の注意書きで出す）
     $('rows').innerHTML = rows.map(function(r){ return '<div class="row"><span class="sub">' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
     var notes = [];
-    if(d.wake && alarm && mins(d.wake) !== mins(alarm))
-      notes.push(['warn', '起床 ' + esc(d.wake) + ' への変更は反映待ちです（Mac が10分以内に反映）']);
     var lampNow = s['ランプ（最後に確かめた時刻）'], lampWant = s['ランプのあるべき時刻'];
     if(lampNow && lampWant && mins(lampNow) !== mins(lampWant))
       notes.push(['warn', 'ランプは ' + esc(lampNow) + ' のままです（あるべき時刻 ' + esc(lampWant) + '）。Mac の Claude に「ランプ合わせて」と伝えてください']);
@@ -154,8 +155,12 @@
     if(age === null){ p.className = 'pill ng'; p.textContent = 'Mac 未確認'; }
     else { p.className = 'pill ' + (age <= 25 ? 'ok' : 'ng'); p.textContent = 'Mac ' + (age < 1 ? 'たった今' : age < 120 ? age + '分前' : Math.round(age / 60) + '時間前'); }
     if(age !== null && age > 25) msg('Mac が ' + p.textContent.replace('Mac ', '') + 'から確認に来ていません。Mac がスリープしていないか確かめてください', 'ng');
-    // 入力欄
-    if(!$('wake').dataset.touched) $('wake').value = ('0' + (d.wake || alarm || '5:30')).slice(-5);
+    // 音の状態（鳴っている間だけ動く Mac の見張り役が書く）
+    var snd = d.sound || '';
+    var on = snd.indexOf('鳴っている') === 0;
+    $('soundPill').className = 'pill ' + (on ? 'warn' : 'ok');
+    $('soundPill').textContent = on ? '🔊 鳴っている' : '止まっている';
+    $('soundText').textContent = snd || '記録なし';
     $('offs').innerHTML = (d.off || []).length ? d.off.map(function(o){
       var dt = new Date(o.date + 'T12:00:00+09:00');
       var w = '日月火水木金土'.charAt(dt.getDay());
@@ -178,11 +183,11 @@
       .then(function(){ btn.disabled = false; });
   }
 
-  $('wake').addEventListener('input', function(){ this.dataset.touched = '1'; });
-  $('setWake').addEventListener('click', function(){
-    var v = $('wake').value; if(!v) return;
-    var t = (+v.slice(0, 2)) + ':' + v.slice(3, 5);
-    act(this, { action: 'set_wake', time: t }, function(){ delete $('wake').dataset.touched; msg('起床 ' + t + ' を送りました。Mac が10分以内に反映します', 'warn'); });
+  $('stopBtn').addEventListener('click', function(){
+    act(this, { action: 'stop' }, function(){
+      msg('止める依頼を送りました。20秒ほどで止まります（Mac で鳴っているときだけ）', 'warn');
+      setTimeout(load, 30000);   // 30秒後に読み直して、止まったかを出す
+    });
   });
   $('addOff').addEventListener('click', function(){
     var f = $('from').value, t = $('to').value || f; if(!f) { msg('お休みの最初の日を選んでください', 'warn'); return; }
