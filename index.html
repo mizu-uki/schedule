@@ -5,6 +5,7 @@
     🌅明朝  = morning.html の内部タブ "morning"
     🌙前夜  = morning.html の内部タブ "night"
     🧘      = morning.html の内部タブ "stretch"（絵文字だけの小さいタブ）
+    ⏰      = alarm.html（目覚まし：起床時間・お休み。2026-11-08 追加）
     ✏️組む  = plan.html（自分で1日を組む。実行中もここを見る）
              → 「22:00 まで ○時間○分 ✏️組む」のボタンで開く
   ※かつてあった「今日の予定」タブ（today.html のチェックリスト）は
@@ -73,6 +74,7 @@
   #tabM.on{background:var(--morning)}
   #tabN.on{background:var(--night)}
   #tabS.on{background:#3f8f6b}
+  #tabA.on{background:#c0603c}
   /* 絵文字だけの小さいタブ。他のタブと幅を分け合わず、必要なぶんだけ取る */
   .tab-mini{flex:0 0 auto;padding:8px 12px;font-size:15px}
   .panes{flex:1 1 auto;position:relative;min-height:0}
@@ -86,6 +88,7 @@
     <div class="tab" id="tabM">🌅 明朝</div>
     <div class="tab" id="tabN">🌙 前夜</div>
     <div class="tab tab-mini" id="tabS" title="柔軟・ストレッチ">🧘</div>
+    <div class="tab tab-mini" id="tabA" title="目覚まし（起床時間・お休み）">⏰</div>
   </div>
   <button class="left" id="left" type="button"
           title="今日の22:00までの残り時間。押すと「組む」（デイプランナー）を開く"></button>
@@ -95,10 +98,12 @@
   <iframe id="fM" title="朝ルーティン"></iframe>
   <!-- src は JS から付与（plan.html も更新が即反映されるように） -->
   <iframe id="fP" title="デイプランナー"></iframe>
+  <!-- ⏰ 目覚まし。押したときに初めて読み込む（2026-11-08） -->
+  <iframe id="fA" title="目覚まし"></iframe>
 </div>
 
 <script>
-  var fM = document.getElementById('fM'), fP = document.getElementById('fP');
+  var fM = document.getElementById('fM'), fP = document.getElementById('fP'), fA = document.getElementById('fA');
   // 外部から ?tab=p&day=next で呼ばれたら、プランナーを翌日で開く
   var Q = new URLSearchParams(location.search);
   var planQ = 'plan.html?t=' + Date.now();
@@ -113,9 +118,10 @@
   fM.src = 'morning.html?t=' + Date.now(); // 同上。チェックリストも同じリポジトリの morning.html が正
   var BTN = { m: document.getElementById('tabM'),      // 「組む」はタブ帯ではなく
               n: document.getElementById('tabN'),        // 残り時間のボタン（#left）が担当する
-              s: document.getElementById('tabS') };      // 🧘 = ストレッチ
+              s: document.getElementById('tabS'),        // 🧘 = ストレッチ
+              a: document.getElementById('tabA') };      // ⏰ = 目覚まし（alarm.html）
   var leftEl = document.getElementById('left');
-  var TABS = ['m', 'p', 'n', 's'];                       // 有効なタブ名（これ以外の指定は無視する）
+  var TABS = ['m', 'p', 'n', 's', 'a'];                       // 有効なタブ名（これ以外の指定は無視する）
   var cur = null;                                        // 今どれを見ているか（チップの選択表示に使う）
   var INNER = { m: 'morning', n: 'night', s: 'stretch' };   // morning.html 側の data-t
   var KEY = 'shell-tab';
@@ -169,9 +175,11 @@
   function show(which, remember){
     cur = which;
     for(var k in BTN){ BTN[k].classList.toggle('on', k === which); }
-    var useMorning = (which !== 'p');            // 組む以外は morning.html の中身を出す
+    var useMorning = (which !== 'p' && which !== 'a');   // 組む・目覚まし以外は morning.html の中身を出す
     fM.classList.toggle('on', useMorning);
     fP.classList.toggle('on', which === 'p');
+    fA.classList.toggle('on', which === 'a');
+    if(which === 'a') fA.src = 'alarm.html?t=' + Date.now();   // 開くたびに最新を読む
     if(useMorning){
       wanted = INNER[which];
       applyInner(wanted);          // 読み込み済みなら即反映。未了ならload時に反映
@@ -186,6 +194,7 @@
   BTN.m.addEventListener('click', function(){ show('m', true); });
   BTN.n.addEventListener('click', function(){ show('n', true); });
   BTN.s.addEventListener('click', function(){ show('s', true); });
+  BTN.a.addEventListener('click', function(){ show('a', true); });
   // 残り時間ボタン = プランナーを「今日」の日付で開く（別の日を見ていても今日へ戻す）
   leftEl.addEventListener('click', function(){
     show('p', true);
