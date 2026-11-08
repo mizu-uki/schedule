@@ -129,10 +129,8 @@
     $('next').textContent = s['次の朝'] || '―';
     var rows = [
       ['ラジオ・ランプ', radio || '―'],
-      ['目覚まし', alarm || '―'],
-      ['ラジオの止まる保険', s['ラジオ停止の保険'] || '―'],
-      ['ランプ（最後に確かめた）', (s['ランプ（最後に確かめた時刻）'] || '―') + (s['ランプを確かめた日時'] ? '　' + s['ランプを確かめた日時'].slice(5) : '')]
-    ];
+      ['目覚まし', alarm || '―']
+    ];   // 「ラジオの止まる保険」「ランプ（最後に確かめた）」は 2026-11-08 本人の希望で非表示（ランプのずれは下の注意書きで出す）
     $('rows').innerHTML = rows.map(function(r){ return '<div class="row"><span class="sub">' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
     var notes = [];
     if(d.wake && alarm && mins(d.wake) !== mins(alarm))
