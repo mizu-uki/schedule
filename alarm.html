@@ -75,8 +75,9 @@
 
   <div class="card">
     <div class="ttl">お休み（鳴らさない日）</div>
-    <div class="sub">旅行などでラジオと目覚ましを鳴らさない日。ランプは止まりません。</div>
-    <div class="line"><input type="date" id="from"><input type="date" id="to"></div>
+    <div class="sub">旅行などでラジオと目覚ましを鳴らさない日。期間でまとめて足せます（1回で最長62日）。ランプは止まりません。</div>
+    <div class="line sub" style="margin-bottom:-4px"><span>最初の日</span><span>最後の日（1日だけなら空欄）</span></div>
+    <div class="line"><input type="date" id="from" aria-label="最初の日"><input type="date" id="to" aria-label="最後の日"></div>
     <div class="line"><input id="memo" placeholder="メモ（任意）"><button id="addOff" type="button">足す</button></div>
     <div id="offs" style="margin-top:8px"></div>
   </div>
