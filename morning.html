@@ -171,6 +171,16 @@
   .sleep li:last-child{margin-bottom:0;}
   .sleep .big{color:var(--pink); font-weight:700;}
 
+  /* 睡眠の目安（前夜タブの一番上。2026-11-15 本人「7時間では足りない。7.5〜8時間寝たい」） */
+  .sleepgoal{
+    background:linear-gradient(135deg,#1c2733,#241d33); border:1px solid #3a2d52;
+    border-radius:14px; padding:12px 14px; margin-bottom:14px;
+  }
+  .sleepgoal .head{font-weight:700; font-size:1rem;}
+  .sleepgoal .bed{margin-top:6px; font-size:1.05rem;}
+  .sleepgoal .bed b{color:var(--pink); font-size:1.2rem;}
+  .sleepgoal .note{margin-top:4px; font-size:.8rem; color:var(--sub);}
+
   .resetbar{text-align:center; margin-top:24px;}
   .reset{
     background:transparent; border:1px solid var(--line); color:var(--sub);
@@ -238,6 +248,13 @@
 
   <!-- ========== 前夜 ========== -->
   <section id="night" class="show">
+
+    <!-- 睡眠の目安。寝る時刻は ⏰ タブと同じ起床時刻から逆算する（起床を変えても追従。読めないときは最後に読めた値） -->
+    <div class="sleepgoal" id="sleepGoal">
+      <div class="head">💤 自分に必要な睡眠は <span style="color:var(--pink)">7.5〜8時間</span>（7時間では足りない）</div>
+      <div class="bed" id="sleepBed">起床 6:00 なら <b>22:00〜22:30</b> に寝る</div>
+      <div class="note" id="sleepNote">2026年11月15日、最近の睡眠を振り返って決めた</div>
+    </div>
 
     <details class="sleep">
       <summary>😴 寝付けるか不安なあなたへ（タップで開く）</summary>
@@ -616,6 +633,26 @@
     ul.innerHTML=MERITS.map(function(m){ return '<li>'+m+'</li>'; }).join('');
   });
 
+
+  // 睡眠の目安：起床時刻（⏰ タブと同じ中継）から 8時間前〜7.5時間前を出す
+  (function(){
+    function hm(n){ n=(n+1440)%1440; return Math.floor(n/60)+':'+('0'+(n%60)).slice(-2); }
+    function show(wake){
+      var m=/(\d{1,2}):(\d{2})/.exec(wake||''); if(!m) return;
+      var w=(+m[1])*60+(+m[2]);
+      document.getElementById('sleepBed').innerHTML='起床 '+hm(w)+' なら <b>'+hm(w-480)+'〜'+hm(w-450)+'</b> に寝る';
+    }
+    var LS=window.localStorage;
+    try{ show(LS.getItem('sleepWake')); }catch(e){}
+    var url=LS.getItem('alarmUrl'), key=LS.getItem('alarmKey');
+    if(!url||!key) return;
+    fetch(url+(url.indexOf('?')<0?'?':'&')+'key='+encodeURIComponent(key)+'&action=state',{cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var a=d&&d.ok&&d.status&&d.status['起床（目覚まし）'];
+        if(a && /\d{1,2}:\d{2}/.test(a)){ LS.setItem('sleepWake',a); show(a); }
+      }).catch(function(){});
+  })();
 
   // ストレッチ枠の開閉を覚えておく（既定は閉じたまま）
   (function(){
