@@ -171,15 +171,14 @@
   .sleep li:last-child{margin-bottom:0;}
   .sleep .big{color:var(--pink); font-weight:700;}
 
-  /* 睡眠の目安（前夜タブの一番上。2026-11-15 本人「7時間では足りない。7.5〜8時間寝たい」） */
+  /* 睡眠の目安（前夜タブ「寝付けるか不安なあなたへ」の下。2026-11-15 本人「7時間では足りない。7.5〜8時間寝たい」／同日「目立ちすぎ」で控えめに） */
   .sleepgoal{
-    background:linear-gradient(135deg,#1c2733,#241d33); border:1px solid #3a2d52;
-    border-radius:14px; padding:12px 14px; margin-bottom:14px;
+    border:1px solid var(--line); border-radius:12px;
+    padding:9px 12px; margin-bottom:14px; font-size:.82rem; color:var(--sub);
   }
-  .sleepgoal .head{font-weight:700; font-size:1rem;}
-  .sleepgoal .bed{margin-top:6px; font-size:1.05rem;}
-  .sleepgoal .bed b{color:var(--pink); font-size:1.2rem;}
-  .sleepgoal .note{margin-top:4px; font-size:.8rem; color:var(--sub);}
+  .sleepgoal .bed{margin-top:3px;}
+  .sleepgoal .bed b{color:var(--text);}
+  .sleepgoal .since{margin-top:3px; font-size:.72rem; opacity:.8;}
 
   .resetbar{text-align:center; margin-top:24px;}
   .reset{
@@ -249,13 +248,6 @@
   <!-- ========== 前夜 ========== -->
   <section id="night" class="show">
 
-    <!-- 睡眠の目安。寝る時刻は ⏰ タブと同じ起床時刻から逆算する（起床を変えても追従。読めないときは最後に読めた値） -->
-    <div class="sleepgoal" id="sleepGoal">
-      <div class="head">💤 自分に必要な睡眠は <span style="color:var(--pink)">7.5〜8時間</span>（7時間では足りない）</div>
-      <div class="bed" id="sleepBed">起床 6:00 なら <b>22:00〜22:30</b> に寝る</div>
-      <div class="note" id="sleepNote">2026年11月15日、最近の睡眠を振り返って決めた</div>
-    </div>
-
     <details class="sleep">
       <summary>😴 寝付けるか不安なあなたへ（タップで開く）</summary>
       <ul>
@@ -266,6 +258,13 @@
         <li>14時以降の<b>カフェイン</b>は控える</li>
       </ul>
     </details>
+
+    <!-- 睡眠の目安。寝る時刻は ⏰ タブと同じ起床時刻から逆算する（起床を変えても追従。読めないときは最後に読めた値） -->
+    <div class="sleepgoal" id="sleepGoal">
+      <div>💤 自分に必要な睡眠は <b style="color:var(--text)">7.5〜8時間</b>（7時間では足りない）</div>
+      <div class="bed" id="sleepBed">起床 6:00 なら <b>22:00〜22:30</b> に寝る</div>
+      <div class="since">2026年11月15日、最近の睡眠を振り返って決めた</div>
+    </div>
 
     <div class="block">
       <div class="ttl">🍽 夕飯後</div>
