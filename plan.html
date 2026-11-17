@@ -256,7 +256,7 @@ var DAILY_FIXED = [
   {t: 5*60+30, d:30, name:"明朝タスク", k:"f"},
   {t:12*60, d:30, name:"ランチ",     k:"f"},
   {t:19*60, d:30, name:"ディナー",   k:"f"},   // 2026-11-15 本人指定で 20:00→19:00
-  {t:22*60, d:30, name:"前夜タスク", k:"f"}
+  {t:21*60, d:30, name:"前夜タスク", k:"f"}    // 2026-11-18 本人指定で 22:00→21:00
 ];
 
 var TEMPLATES = [
@@ -493,7 +493,7 @@ grid.addEventListener("click", function(e){
 
 
 /* 新しいブロックを置く位置＝「重ならない一番早い空き」。
-   末尾に足していくと前夜タスク(22:00)の後ろに積まれて使いにくいため、上から詰める。 */
+   末尾に足していくと前夜タスク(21:00)の後ろに積まれて使いにくいため、上から詰める。 */
 function firstFreeSlot(dur){
   var d = Math.max(dur || 30, 5);
   var sorted = blocks.slice().sort(function(a,b){ return a.t-b.t; });
